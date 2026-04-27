@@ -2,24 +2,33 @@
 RAG-пайплайн: оркестратор всех модулей.
 
 Полная цепочка:
-  Router -> QueryExpander -> RetrievalModule -> GenerationModule
-         -> VerificationModule -> TimeFilter -> RAGResponse
+  Router
+    → QueryExpander          (перефразировки + HyDE + декомпозиция)
+    → RetrievalModule        (стратегия по типу + parent retrieval + кэш эмбедингов)
+    → Reranker               (cross-encoder переранжирование)
+    → FactExtractor          (прямое извлечение для single.simple — если находит)
+    → GenerationModule       (если FactExtractor не сработал)
+    → VerificationModule
+    → TimeFilter
+    → RAGResponse
 
 Fallback для single-запросов:
-  Если верификатор отклонил ответ (retry=False) и запрос single — загружаем
-  полный документ дисциплины и регенерируем ответ по расширенному контексту.
+  Если верификатор отклонил и запрос single — загружаем полный документ,
+  регенерируем по расширенному контексту.
 """
 from __future__ import annotations
 
 import logging
 
-from .expander     import QueryExpander
-from .generation   import GenerationModule, build_context
-from .models       import QueryType, RAGResponse, VerificationResult
-from .retrieval    import RetrievalModule
-from .router       import Router
-from .time_filter  import TimeFilter
-from .verification import VerificationModule
+from .expander      import QueryExpander
+from .fact_extractor import FactExtractor
+from .generation    import GenerationModule, build_context
+from .models        import QueryType, RAGResponse, VerificationResult
+from .reranker      import Reranker
+from .retrieval     import RetrievalModule
+from .router        import Router
+from .time_filter   import TimeFilter
+from .verification  import VerificationModule
 
 log = logging.getLogger(__name__)
 
@@ -36,6 +45,7 @@ class RAGPipeline:
         pipeline = RAGPipeline()
         response = pipeline.ask("Сколько часов лекций в дисциплине по Python?")
         print(response.answer)
+        print(response.fact_extracted)   # True если ответ взят напрямую из блока
     """
 
     def __init__(
@@ -44,12 +54,14 @@ class RAGPipeline:
         collection: str = "discipline_chunks",
     ) -> None:
         log.info("Инициализация RAG-пайплайна ...")
-        self._router       = Router()
-        self._expander     = QueryExpander()
-        self._retrieval    = RetrievalModule(qdrant_url=qdrant_url, collection=collection)
-        self._generation   = GenerationModule()
-        self._verification = VerificationModule()
-        self._time_filter  = TimeFilter()
+        self._router        = Router()
+        self._expander      = QueryExpander()
+        self._retrieval     = RetrievalModule(qdrant_url=qdrant_url, collection=collection)
+        self._reranker      = Reranker()
+        self._fact_extractor = FactExtractor()
+        self._generation    = GenerationModule()
+        self._verification  = VerificationModule()
+        self._time_filter   = TimeFilter()
         log.info("Пайплайн готов.")
 
     # ------------------------------------------------------------------
@@ -65,19 +77,20 @@ class RAGPipeline:
         # 2. Разрешение дисциплин
         resolved = self._retrieval.resolve_disciplines(route.disciplines)
 
-        # 3. Расширение запроса
+        # 3. Расширение запроса (перефразировки + HyDE + декомпозиция)
         expanded = self._expander.expand(query, route, resolved)
 
-        # 4. Поиск -> генерация -> верификация (с retry)
-        answer, chunks, verified = self._search_generate_verify(query, expanded)
+        # 4. Поиск → реранкинг → извлечение/генерация → верификация
+        answer, chunks, verified, fact_extracted = self._run(query, expanded)
 
         # 5. Fallback для single: полный документ при провале верификации
-        if not verified.is_valid and route.query_type in SINGLE_TYPES:
+        if not verified.is_valid and route.query_type in SINGLE_TYPES and not fact_extracted:
             answer, chunks, verified = self._single_fulltext_fallback(
                 query, expanded, verified
             )
+            fact_extracted = False
 
-        # 6. Time Filter — постпроцессинг в конце цепочки
+        # 6. Time Filter — постпроцессинг в самом конце
         answer = self._time_filter.apply(query, answer)
 
         return RAGResponse(
@@ -85,6 +98,7 @@ class RAGPipeline:
             query_type        = route.query_type,
             is_verified       = verified.is_valid,
             chunks_used       = chunks,
+            fact_extracted    = fact_extracted,
             verification_note = verified.note,
         )
 
@@ -92,21 +106,33 @@ class RAGPipeline:
     # Internal
     # ------------------------------------------------------------------
 
-    def _search_generate_verify(self, query: str, expanded):
-        """Поиск -> генерация -> верификация с одним retry."""
-        answer   = NO_DATA_MSG
-        chunks   = []
-        verified = VerificationResult(is_valid=False, note="не запускалось")
+    def _run(self, query: str, expanded):
+        """Поиск → реранкинг → FactExtractor или генерация → верификация."""
+        answer         = NO_DATA_MSG
+        chunks         = []
+        verified       = VerificationResult(is_valid=False, note="не запускалось")
+        fact_extracted = False
 
         for attempt in range(MAX_RETRIES + 1):
+            # Поиск
             chunks = self._retrieval.retrieve(expanded)
-
             if not chunks:
                 log.warning("Поиск без результатов (попытка %d).", attempt + 1)
-                verified = VerificationResult(is_valid=False,
-                                              note="нет релевантных чанков")
+                verified = VerificationResult(is_valid=False, note="нет чанков")
                 break
 
+            # Реранкинг
+            chunks = self._reranker.rerank(query, chunks)
+
+            # FactExtractor — пробуем прямое извлечение для single.simple
+            fact = self._fact_extractor.try_extract(query, chunks, expanded.query_type)
+            if fact:
+                answer         = fact
+                fact_extracted = True
+                verified       = VerificationResult(is_valid=True, note="direct extraction")
+                break
+
+            # Обычная генерация
             answer   = self._generation.generate(query, chunks, expanded)
             verified = self._verification.verify(query, answer, chunks)
 
@@ -122,13 +148,10 @@ class RAGPipeline:
                 answer = NO_DATA_MSG
             break
 
-        return answer, chunks, verified
+        return answer, chunks, verified, fact_extracted
 
     def _single_fulltext_fallback(self, query: str, expanded, prev_verified):
-        """
-        Fallback: загружаем полный текст документа дисциплины и регенерируем ответ.
-        Используется когда векторный поиск не нашёл достаточного контекста.
-        """
+        """Загружает полный документ и регенерирует ответ."""
         if not expanded.disciplines:
             log.warning("Fallback невозможен: дисциплина не определена.")
             return NO_DATA_MSG, [], prev_verified
@@ -140,12 +163,9 @@ class RAGPipeline:
         if not full_chunks:
             return NO_DATA_MSG, [], prev_verified
 
-        # Строим контекст из полного документа
-        full_context = build_context(full_chunks)
-        answer       = self._generation.generate_from_context(
-            query, full_context, expanded.query_type.value
+        answer   = self._generation.generate_from_context(
+            query, build_context(full_chunks), expanded.query_type.value
         )
-        verified     = self._verification.verify(query, answer, full_chunks)
-
+        verified = self._verification.verify(query, answer, full_chunks)
         log.info("Single fallback: valid=%s", verified.is_valid)
         return answer, full_chunks, verified

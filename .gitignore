@@ -1,5 +1,6 @@
 .env
 /test_data
+/test_data_1
 /venv
 __pycache__
 *.pyc
