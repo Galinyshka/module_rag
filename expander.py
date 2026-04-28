@@ -10,22 +10,32 @@
 from __future__ import annotations
 
 import json
+import re
 import logging
 
 from openai import OpenAI
 
-from .config import (
+from config import (
     LLM_BASE_URL, LLM_API_KEY,
     LLM_MODEL_FAST, LLM_MAX_TOKENS_FAST, LLM_MAX_TOKENS_HYDE,
 )
-from .models import ExpandedQuery, QueryType, RouteResult
-from .prompts import DECOMPOSE_PROMPT, PARAPHRASE_PROMPT, HYDE_PROMPT
+from models import ExpandedQuery, QueryType, RouteResult
+from prompts import DECOMPOSE_PROMPT, PARAPHRASE_PROMPT, HYDE_PROMPT
 
 log = logging.getLogger(__name__)
 
 # HyDE применяется только для одиночных запросов — там наибольший выигрыш
 HYDE_QUERY_TYPES = {QueryType.SINGLE_SIMPLE, QueryType.SINGLE_GLOBAL}
 
+
+
+def _parse_json(text: str) -> dict:
+    """Парсит JSON из ответа модели, убирая markdown-блоки если они есть."""
+    text = text.strip()
+    # Убираем ```json ... ``` или ``` ... ```
+    text = re.sub(r"^```(?:json)?\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+    return json.loads(text.strip())
 
 class QueryExpander:
     def __init__(self) -> None:
@@ -72,7 +82,7 @@ class QueryExpander:
             max_tokens = max_tokens,
             messages   = [{"role": "user", "content": prompt}],
         )
-        return json.loads(resp.choices[0].message.content.strip())
+        return _parse_json(resp.choices[0].message.content)
 
     def _call_text(self, prompt: str, max_tokens: int) -> str:
         resp = self._client.chat.completions.create(

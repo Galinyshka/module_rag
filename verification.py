@@ -1,16 +1,26 @@
 from __future__ import annotations
-import json, logging
+import json
+import re, logging
 from openai import OpenAI
-from .config import (
+from config import (
     LLM_BASE_URL, LLM_API_KEY,
     LLM_MODEL_VERIFY, LLM_MAX_TOKENS_VERIFY,
 )
-from .models import RetrievedChunk, VerificationResult
-from .prompts import VERIFY_PROMPT
+from models import RetrievedChunk, VerificationResult
+from prompts import VERIFY_PROMPT
 
 log = logging.getLogger(__name__)
 MAX_CONTEXT_CHARS = 6_000
 
+
+
+def _parse_json(text: str) -> dict:
+    """Парсит JSON из ответа модели, убирая markdown-блоки если они есть."""
+    text = text.strip()
+    # Убираем ```json ... ``` или ``` ... ```
+    text = re.sub(r"^```(?:json)?\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+    return json.loads(text.strip())
 
 class VerificationModule:
     def __init__(self) -> None:
@@ -28,7 +38,7 @@ class VerificationModule:
                 max_tokens = LLM_MAX_TOKENS_VERIFY,
                 messages   = [{"role": "user", "content": prompt}],
             )
-            data   = json.loads(resp.choices[0].message.content.strip())
+            data   = _parse_json(resp.choices[0].message.content)
             result = VerificationResult(
                 is_valid = bool(data.get("is_valid", True)),
                 retry    = bool(data.get("retry", False)),

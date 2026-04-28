@@ -24,11 +24,11 @@ from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
 
-from .config import (
+from config import (
     EMBED_MODEL, QDRANT_URL, QDRANT_COLLECTION,
     VEC_TEXT, VEC_SUMMARY,
 )
-from .models import ExpandedQuery, QueryType, RetrievedChunk
+from models import ExpandedQuery, QueryType, RetrievedChunk
 
 log = logging.getLogger(__name__)
 
@@ -84,13 +84,14 @@ class RetrievalModule:
         ORDER = ["course_info", "topics", "competencies", "topic", "competency",
                  "self_study_resources", "assessment_fund", "literature",
                  "online_resources", "other_sections", "other_section"]
-        points, _ = self._qdrant.scroll(
+        result = self._qdrant.scroll(
             collection_name = self._collection,
             scroll_filter   = self._discipline_filter([discipline]),
             limit           = 500,
             with_payload    = True,
             with_vectors    = False,
         )
+        points = result[0]
         chunks = [self._point_to_chunk(p, 1.0) for p in points]
         chunks.sort(key=lambda c: ORDER.index(c.block_type)
                     if c.block_type in ORDER else 99)
@@ -192,27 +193,18 @@ class RetrievalModule:
         подтягивает родительский блок, если его ещё нет в результатах.
         """
         existing_ids = {c.block_id for c in chunks}
-        parent_ids   = {
+        parent_ids   = [
             c.metadata["parent_id"]
             for c in chunks
             if c.metadata.get("parent_id") and c.metadata["parent_id"] not in existing_ids
-        }
+        ]
+        parent_ids = list(dict.fromkeys(parent_ids))  # дедупликация
         if not parent_ids:
             return chunks
 
-        points, _ = self._qdrant.scroll(
-            collection_name = self._collection,
-            scroll_filter   = Filter(must=[FieldCondition(
-                key="block_id", match=MatchAny(any=list(parent_ids))
-            )]),
-            limit        = len(parent_ids) + 5,
-            with_payload = True,
-            with_vectors = False,
-        )
-        # Qdrant не индексирует block_id как отдельное поле — используем get
         parent_points = self._qdrant.retrieve(
             collection_name = self._collection,
-            ids             = list(parent_ids),
+            ids             = parent_ids,
             with_payload    = True,
             with_vectors    = False,
         )
@@ -269,14 +261,15 @@ class RetrievalModule:
         qdrant_filter,
         top_k:        int,
     ) -> list[RetrievedChunk]:
-        hits = self._qdrant.search(
+        result = self._qdrant.query_points(
             collection_name = self._collection,
-            query_vector    = (vector_name, vec),
+            query           = vec,
+            using           = vector_name,
             query_filter    = qdrant_filter,
             limit           = top_k,
             with_payload    = True,
         )
-        return [self._point_to_chunk(h, h.score) for h in hits]
+        return [self._point_to_chunk(h, h.score) for h in result.points]
 
     # ------------------------------------------------------------------
     # Кэш эмбедингов
@@ -340,14 +333,15 @@ class RetrievalModule:
         names: set[str] = set()
         offset = None
         while True:
-            result, next_offset = self._qdrant.scroll(
+            result = self._qdrant.scroll(
                 collection_name = self._collection,
                 limit           = 250,
                 offset          = offset,
                 with_payload    = True,
                 with_vectors    = False,
             )
-            for point in result:
+            batch, next_offset = result[0], result[1]
+            for point in batch:
                 d = (point.payload or {}).get("discipline", "")
                 if d:
                     names.add(d)

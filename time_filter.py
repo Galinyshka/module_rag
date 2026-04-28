@@ -1,7 +1,18 @@
+"""
+Time Question Filter — постпроцессинг ответа для числовых/временных запросов.
+
+Работа:
+  1. Классификация запроса по лексическим маркерам (без LLM, быстро).
+  2. При срабатывании — LLM извлекает только ключевой факт из готового ответа.
+"""
 from __future__ import annotations
-import logging, re
+
+import logging
+import re
+
 from openai import OpenAI
-from .config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_FAST, LLM_MAX_TOKENS_TIME
+
+from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_FAST, LLM_MAX_TOKENS_TIME
 
 log = logging.getLogger(__name__)
 
@@ -23,13 +34,14 @@ _TIME_PATTERNS: list[re.Pattern] = [re.compile(p, re.IGNORECASE) for p in [
 ]]
 
 EXTRACT_PROMPT = """\
-Из текста ниже извлеки ТОЛЬКО конкретный ответ на вопрос: числовое значение, \
-название формы контроля или иной краткий факт.
-Без вступлений и пояснений — только факт (1–2 строки максимум).
+Из текста ниже извлеки ТОЛЬКО конкретный числовой или категориальный факт,
+который является прямым ответом на вопрос.
+Без вступлений, без пояснений. Только факт.
+Если факта нет — пустая строка.
 
 Вопрос: {query}
 
-Текст ответа:
+Текст:
 {answer}
 
 Факт:"""
@@ -51,12 +63,13 @@ class TimeFilter:
             resp = self._client.chat.completions.create(
                 model      = LLM_MODEL_FAST,
                 max_tokens = LLM_MAX_TOKENS_TIME,
-                messages   = [{"role": "user",
-                               "content": EXTRACT_PROMPT.format(
-                                   query=query, answer=answer
-                               )}],
+                messages   = [{"role": "user", "content": EXTRACT_PROMPT.format(
+                    query=query, answer=answer
+                )}],
             )
             fact = resp.choices[0].message.content.strip()
+            if not fact:
+                return answer
             log.info("TimeFilter: '%s...' -> '%s'", answer[:50], fact)
             return fact
         except Exception as exc:

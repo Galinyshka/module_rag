@@ -102,9 +102,9 @@ def _apply_prompts(args: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 
 def _apply_tuning(args: argparse.Namespace) -> None:
-    import rag.retrieval as ret
-    import rag.expander  as exp
-    import rag.config    as cfg
+    import retrieval as ret
+    import expander  as exp
+    import config    as cfg
 
     ret.TOP_K_SINGLE          = args.top_k_single
     ret.TOP_K_PER_DISC        = args.top_k_per_disc
@@ -210,7 +210,7 @@ def _response_to_dict(query: str, response, elapsed: float) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def _make_pipeline(args):
-    from rag import RAGPipeline
+    from pipeline import RAGPipeline
     pipeline = RAGPipeline(qdrant_url=args.qdrant, collection=args.collection)
     if args.no_reranker:
         pipeline._reranker = _NoopReranker()

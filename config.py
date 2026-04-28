@@ -16,7 +16,8 @@
     RERANKER_TOP_K    — сколько чанков оставить после реранкинга
 """
 import os
-
+from dotenv import load_dotenv
+load_dotenv()
 # ---------------------------------------------------------------------------
 # LLM
 # ---------------------------------------------------------------------------
@@ -27,13 +28,17 @@ LLM_MODEL_FAST   = os.getenv("LLM_MODEL_FAST",   "qwen3-30b-a3b-instruct-2507")
 LLM_MODEL_VERIFY = os.getenv("LLM_MODEL_VERIFY", "deepseek-v3.2")
 LLM_MODEL_MAIN   = os.getenv("LLM_MODEL_MAIN",   "deepseek-v3.2")
 LLM_MODEL_IDX    = os.getenv("LLM_MODEL_IDX",    "deepseek-v3.2")
+# Модель-судья для оценки качества — должна отличаться от generation-модели
+# Рекомендуется: gpt-4o, claude-sonnet-4.5, qwen3.5-397b-a17b
+LLM_MODEL_EVAL   = os.getenv("LLM_MODEL_EVAL",   "qwen/qwen3.5-397b-a17b")
 
 LLM_MAX_TOKENS_FAST   = 300
-LLM_MAX_TOKENS_VERIFY = 200
+LLM_MAX_TOKENS_VERIFY = 400
 LLM_MAX_TOKENS_MAIN   = 1200
 LLM_MAX_TOKENS_IDX    = 400
 LLM_MAX_TOKENS_TIME   = 150
 LLM_MAX_TOKENS_HYDE   = 200
+LLM_MAX_TOKENS_EVAL   = 300   # оценка по одной метрике: score + rationale
 
 LLM_RETRY_DELAY = 2
 LLM_MAX_RETRIES = 3

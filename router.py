@@ -1,12 +1,22 @@
 from __future__ import annotations
-import json, logging
+import json
+import re, logging
 from openai import OpenAI, RateLimitError
-from .config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_FAST, LLM_MAX_TOKENS_FAST
-from .models import QueryType, RouteResult
-from .prompts import ROUTER_PROMPT
+from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_FAST, LLM_MAX_TOKENS_FAST
+from models import QueryType, RouteResult
+from prompts import ROUTER_PROMPT
 
 log = logging.getLogger(__name__)
 
+
+
+def _parse_json(text: str) -> dict:
+    """Парсит JSON из ответа модели, убирая markdown-блоки если они есть."""
+    text = text.strip()
+    # Убираем ```json ... ``` или ``` ... ```
+    text = re.sub(r"^```(?:json)?\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+    return json.loads(text.strip())
 
 class Router:
     def __init__(self) -> None:
@@ -20,7 +30,7 @@ class Router:
                 messages   = [{"role": "user",
                                "content": ROUTER_PROMPT.format(query=query)}],
             )
-            data = json.loads(resp.choices[0].message.content.strip())
+            data = _parse_json(resp.choices[0].message.content)
         except Exception as exc:
             log.warning("Router fallback: %s", exc)
             return RouteResult(QueryType.SINGLE_SIMPLE, [], f"fallback: {exc}")

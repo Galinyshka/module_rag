@@ -17,9 +17,9 @@ import logging
 
 from openai import OpenAI
 
-from .config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_FAST, LLM_MAX_TOKENS_FACT
-from .models import QueryType, RetrievedChunk
-from .prompts import FACT_EXTRACT_PROMPT
+from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_FAST, LLM_MAX_TOKENS_FAST
+from models import QueryType, RetrievedChunk
+from prompts import FACT_EXTRACT_PROMPT
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class FactExtractor:
         try:
             resp = self._client.chat.completions.create(
                 model      = LLM_MODEL_FAST,
-                max_tokens = LLM_MAX_TOKENS_FACT,
+                max_tokens = LLM_MAX_TOKENS_FAST,
                 messages   = [{"role": "user", "content": FACT_EXTRACT_PROMPT.format(
                     query = query,
                     text  = top_chunk.text,

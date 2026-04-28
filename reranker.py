@@ -13,8 +13,8 @@ import logging
 
 from sentence_transformers import CrossEncoder
 
-from .config import RERANKER_MODEL, RERANKER_TOP_K
-from .models import RetrievedChunk
+from config import RERANKER_MODEL, RERANKER_TOP_K
+from models import RetrievedChunk
 
 log = logging.getLogger(__name__)
 

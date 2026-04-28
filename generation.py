@@ -1,9 +1,9 @@
 from __future__ import annotations
 import logging
 from openai import OpenAI
-from .config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_MAIN, LLM_MAX_TOKENS_MAIN
-from .models import ExpandedQuery, RetrievedChunk
-from .prompts import GENERATE_PROMPTS
+from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_MAIN, LLM_MAX_TOKENS_MAIN
+from models import ExpandedQuery, RetrievedChunk
+from prompts import GENERATE_PROMPTS
 
 log = logging.getLogger(__name__)
 MAX_CONTEXT_CHARS = 14_000

@@ -20,15 +20,15 @@ from __future__ import annotations
 
 import logging
 
-from .expander      import QueryExpander
-from .fact_extractor import FactExtractor
-from .generation    import GenerationModule, build_context
-from .models        import QueryType, RAGResponse, VerificationResult
-from .reranker      import Reranker
-from .retrieval     import RetrievalModule
-from .router        import Router
-from .time_filter   import TimeFilter
-from .verification  import VerificationModule
+from expander      import QueryExpander
+from fact_extractor import FactExtractor
+from generation    import GenerationModule, build_context
+from models        import QueryType, RAGResponse, VerificationResult
+from reranker      import Reranker
+from retrieval     import RetrievalModule
+from router        import Router
+from time_filter   import TimeFilter
+from verification  import VerificationModule
 
 log = logging.getLogger(__name__)
 
