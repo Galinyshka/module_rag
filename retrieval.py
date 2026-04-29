@@ -2,16 +2,19 @@
 Гибридный модуль поиска (Retrieval).
 
 Улучшения:
-  - Кэш эмбедингов: каждый уникальный текст эмбедируется один раз,
-    вектор переиспользуется для VEC_TEXT и VEC_SUMMARY поиска.
-  - HyDE: если ExpandedQuery содержит hyde_text — он используется
-    как дополнительный поисковый запрос.
+  - RRF (Reciprocal Rank Fusion): поиск параллельно по questions_vec и
+    summary_vec, результаты объединяются по позиции в каждом рейтинге.
+    questions_vec — близок к живым запросам пользователя.
+    summary_vec   — близок к описательным / тематическим запросам.
+  - Кэш эмбедингов: каждый уникальный текст эмбедируется один раз.
+  - HyDE: если ExpandedQuery содержит hyde_text — используется как
+    дополнительный поисковый запрос.
   - Parent retrieval: после поиска автоматически подтягиваются
     родительские блоки для найденных дочерних.
 
 Стратегии:
-  single.*       — фильтр по дисциплине + семантический поиск
-  multi.relation — независимый поиск по каждой дисциплине
+  single.*       — фильтр по дисциплине + RRF-поиск
+  multi.relation — независимый RRF-поиск по каждой дисциплине
   multi.global   — двухэтапный: обзорные блоки → дисциплины → точный поиск
 """
 from __future__ import annotations
@@ -22,11 +25,14 @@ from difflib import SequenceMatcher
 
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
-from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
+from qdrant_client.models import (
+    Filter, FieldCondition, MatchValue, MatchAny,
+    Prefetch, FusionQuery, Fusion,
+)
 
 from config import (
     EMBED_MODEL, QDRANT_URL, QDRANT_COLLECTION,
-    VEC_TEXT, VEC_SUMMARY,
+    VEC_QUESTIONS, VEC_SUMMARY,
 )
 from models import ExpandedQuery, QueryType, RetrievedChunk
 
@@ -38,6 +44,10 @@ TOP_K_PER_DISC        = 8
 MATCH_THRESHOLD       = 0.55
 MAX_DISCIPLINES_MULTI = 10
 OVERVIEW_BLOCKS       = ["course_info", "topics", "competencies"]
+
+# RRF prefetch размер — сколько кандидатов берём из каждого вектора
+# перед слиянием. Должен быть >= итогового top_k.
+RRF_PREFETCH_K = 50
 
 
 def _normalize(s: str) -> str:
@@ -57,7 +67,7 @@ class RetrievalModule:
     ) -> None:
         log.info("Загрузка модели эмбедингов: %s ...", embed_model)
         self._embedder   = SentenceTransformer(embed_model)
-        self._embed_cache: dict[str, list[float]] = {}   # кэш эмбедингов
+        self._embed_cache: dict[str, list[float]] = {}
         self._qdrant     = QdrantClient(url=qdrant_url)
         self._collection = collection
         self._discipline_index: list[str] = self._load_discipline_names()
@@ -76,14 +86,16 @@ class RetrievalModule:
         else:
             chunks = self._retrieve_single(expanded)
 
-        # Parent retrieval: подтягиваем родительские блоки
         return self._enrich_with_parents(chunks)
 
     def get_full_document(self, discipline: str) -> list[RetrievedChunk]:
         """Все блоки дисциплины — для fallback после провала верификации."""
-        ORDER = ["course_info", "topics", "competencies", "topic", "competency",
-                 "self_study_resources", "assessment_fund", "literature",
-                 "online_resources", "other_sections", "other_section"]
+        ORDER = [
+            "course_info", "topics", "competencies", "topic", "competency",
+            "self_study_resources", "self_study_section",
+            "assessment_fund", "literature",
+            "online_resources", "other_sections", "other_section",
+        ]
         result = self._qdrant.scroll(
             collection_name = self._collection,
             scroll_filter   = self._discipline_filter([discipline]),
@@ -118,21 +130,21 @@ class RetrievalModule:
     # ------------------------------------------------------------------
 
     def _retrieve_single(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
-        return self._multi_query_search(
+        return self._multi_query_rrf(
             self._queries(expanded),
             self._discipline_filter(expanded.disciplines),
             TOP_K_SINGLE,
         )
 
     def _retrieve_multi_relation(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
-        """Независимый поиск по каждой дисциплине — гарантированное покрытие."""
+        """Независимый RRF-поиск по каждой дисциплине — гарантированное покрытие."""
         disciplines = expanded.disciplines or self._discipline_index
         queries     = self._queries(expanded)
         merged: dict[str, RetrievedChunk] = {}
         scores: dict[str, float]          = {}
 
         for disc in disciplines:
-            for c in self._multi_query_search(
+            for c in self._multi_query_rrf(
                 queries, self._discipline_filter([disc]), TOP_K_PER_DISC
             ):
                 if c.block_id not in merged:
@@ -146,12 +158,11 @@ class RetrievalModule:
     def _retrieve_multi_global(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
         """
         Stage 1 — обзорные блоки по всему корпусу → выявляем дисциплины.
-        Stage 2 — точный поиск по выявленным дисциплинам.
+        Stage 2 — точный RRF-поиск по выявленным дисциплинам.
         """
         queries = self._queries(expanded)
 
-        # Stage 1
-        stage1 = self._multi_query_search(
+        stage1 = self._multi_query_rrf(
             queries,
             Filter(must=[FieldCondition(
                 key="block_type", match=MatchAny(any=OVERVIEW_BLOCKS)
@@ -166,8 +177,7 @@ class RetrievalModule:
         if not relevant:
             return stage1
 
-        # Stage 2
-        stage2 = self._multi_query_search(
+        stage2 = self._multi_query_rrf(
             queries, self._discipline_filter(relevant), TOP_K_PER_DISC
         )
 
@@ -188,17 +198,13 @@ class RetrievalModule:
     # ------------------------------------------------------------------
 
     def _enrich_with_parents(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
-        """
-        Для каждого дочернего блока (у которого есть parent_id)
-        подтягивает родительский блок, если его ещё нет в результатах.
-        """
         existing_ids = {c.block_id for c in chunks}
         parent_ids   = [
             c.metadata["parent_id"]
             for c in chunks
             if c.metadata.get("parent_id") and c.metadata["parent_id"] not in existing_ids
         ]
-        parent_ids = list(dict.fromkeys(parent_ids))  # дедупликация
+        parent_ids = list(dict.fromkeys(parent_ids))
         if not parent_ids:
             return chunks
 
@@ -213,46 +219,89 @@ class RetrievalModule:
         return [*chunks, *parents]
 
     # ------------------------------------------------------------------
-    # Поиск + кэш эмбедингов
+    # RRF поиск
     # ------------------------------------------------------------------
 
     def _queries(self, expanded: ExpandedQuery) -> list[str]:
-        """Собирает все тексты для поиска: оригинал + перефразировки + HyDE + подзапросы."""
         queries = [expanded.original, *expanded.paraphrases]
         if expanded.hyde_text:
-            # HyDE идёт первым после оригинала — наиболее близок к языку документов
             queries.insert(1, expanded.hyde_text)
         queries.extend(expanded.sub_queries)
         return queries
 
-    def _multi_query_search(
+    def _multi_query_rrf(
         self,
         queries:      list[str],
         qdrant_filter,
         top_k:        int,
     ) -> list[RetrievedChunk]:
         """
-        Поиск по нескольким запросам × 2 вектора.
-        Эмбединги кэшируются: один уникальный текст → один вызов модели.
-        """
-        seen:   dict[str, RetrievedChunk] = {}
-        scores: dict[str, float]          = {}
+        RRF по нескольким запросам.
 
-        # Предварительно эмбедируем все уникальные запросы одним батчем
+        Для каждого запроса Qdrant делает prefetch по questions_vec и summary_vec,
+        затем объединяет через Fusion.RRF — score блока определяется его позицией
+        в обоих рейтингах, а не абсолютным cosine-score.
+
+        Результаты по всем запросам объединяются на Python-уровне:
+        берём максимальный RRF-score блока среди всех запросов.
+        """
         unique = list(dict.fromkeys(queries))
         self._warm_cache(unique)
 
-        for q in queries:
+        seen:   dict[str, RetrievedChunk] = {}
+        scores: dict[str, float]          = {}
+
+        for q in unique:
             vec = self._embed_cached(q)
-            for vec_name in (VEC_TEXT, VEC_SUMMARY):
-                for c in self._vector_search(vec, vec_name, qdrant_filter, top_k):
-                    if c.block_id not in seen:
-                        seen[c.block_id]   = c
-                        scores[c.block_id] = c.score
-                    else:
-                        scores[c.block_id] = max(scores[c.block_id], c.score)
+            for c in self._rrf_search(vec, qdrant_filter, top_k):
+                if c.block_id not in seen:
+                    seen[c.block_id]   = c
+                    scores[c.block_id] = c.score
+                else:
+                    scores[c.block_id] = max(scores[c.block_id], c.score)
 
         return self._sort_by_score(seen, scores)[:top_k * 3]
+
+    def _rrf_search(
+        self,
+        vec:          list[float],
+        qdrant_filter,
+        top_k:        int,
+    ) -> list[RetrievedChunk]:
+        """
+        Один RRF-запрос в Qdrant:
+          prefetch questions_vec → prefetch summary_vec → Fusion.RRF → top_k.
+
+        questions_vec ловит запросы вида "какие вопросы на контрольной".
+        summary_vec   ловит запросы вида "расскажи про самостоятельную работу".
+        RRF объединяет оба рейтинга без необходимости подбирать веса.
+        """
+        try:
+            result = self._qdrant.query_points(
+                collection_name = self._collection,
+                prefetch        = [
+                    Prefetch(
+                        query        = vec,
+                        using        = VEC_QUESTIONS,
+                        filter       = qdrant_filter,
+                        limit        = RRF_PREFETCH_K,
+                    ),
+                    Prefetch(
+                        query        = vec,
+                        using        = VEC_SUMMARY,
+                        filter       = qdrant_filter,
+                        limit        = RRF_PREFETCH_K,
+                    ),
+                ],
+                query           = FusionQuery(fusion=Fusion.RRF),
+                limit           = top_k,
+                with_payload    = True,
+            )
+            return [self._point_to_chunk(h, h.score) for h in result.points]
+        except Exception as exc:
+            # Fallback на старый поиск если версия qdrant-client не поддерживает RRF
+            log.warning("RRF недоступен (%s), fallback на summary_vec", exc)
+            return self._vector_search(vec, VEC_SUMMARY, qdrant_filter, top_k)
 
     def _vector_search(
         self,
@@ -261,6 +310,7 @@ class RetrievalModule:
         qdrant_filter,
         top_k:        int,
     ) -> list[RetrievedChunk]:
+        """Fallback: простой поиск по одному вектору."""
         result = self._qdrant.query_points(
             collection_name = self._collection,
             query           = vec,
@@ -276,7 +326,6 @@ class RetrievalModule:
     # ------------------------------------------------------------------
 
     def _warm_cache(self, texts: list[str]) -> None:
-        """Эмбедирует все тексты которых нет в кэше — одним батч-вызовом."""
         missing = [t for t in texts if t not in self._embed_cache]
         if not missing:
             return

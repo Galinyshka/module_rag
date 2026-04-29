@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Any
 from models import QueryType, RAGResponse
 
-#logging.basicConfig(level=logging.WARNING, format="%(levelname)s  %(message)s")
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
 #logging.basicConfig(level=logging.DEBUG)
 

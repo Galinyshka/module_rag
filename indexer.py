@@ -3,17 +3,20 @@
 
 Пайплайн для каждого блока:
   1. Сериализация блока в текст
-  2. LLM-резюме через OpenAI-совместимый API
-  3. Два эмбединга: text_vec и summary_vec  (sentence-transformers, multilingual)
-  4. Загрузка в Qdrant с named vectors + полным payload
+  2. LLM-резюме   через OpenAI-совместимый API  → summary_vec
+  3. LLM-вопросы  через OpenAI-совместимый API  → questions_vec
+  4. Два эмбединга: questions_vec и summary_vec  (sentence-transformers, multilingual)
+  5. Загрузка в Qdrant с named vectors + полным payload
 
 Иерархия:
-  topics         → overview-точка
-    └─ topic_N   → дочерняя точка (parent_id = topics.id)
-  competencies   → overview-точка
-    └─ comp_K    → дочерняя точка
-  other_sections → overview-точка (если есть подразделы)
-    └─ sub_N     → дочерняя точка
+  topics              → overview-точка
+    └─ topic_N        → дочерняя точка (parent_id = topics.id)
+  competencies        → overview-точка
+    └─ comp_K         → дочерняя точка
+  self_study_resources → overview-точка
+    └─ sub_N          → дочерняя точка (каждый подраздел отдельно)
+  other_sections      → overview-точка (если есть подразделы)
+    └─ sub_N          → дочерняя точка
   course_info / literature / assessment_fund / … → плоские точки
 
 IDs детерминированы: uuid5(discipline + block_type + local_key)
@@ -35,7 +38,9 @@ from typing import Any
 from openai import OpenAI, RateLimitError
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams, VectorsConfig
+from qdrant_client.models import Distance, PointStruct, VectorParams
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 
 from config import (
     LLM_BASE_URL,
@@ -46,16 +51,37 @@ from config import (
     LLM_MAX_RETRIES,
     QDRANT_URL,
     QDRANT_COLLECTION,
-    VEC_TEXT,
+    VEC_QUESTIONS,   # было VEC_TEXT
     VEC_SUMMARY,
     EMBED_MODEL,
     EMBED_DIM,
     EMBED_BATCH_SIZE,
+    QUESTIONS_COUNT,
 )
+import logging
 
 log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
+log.setLevel(logging.INFO)
 
+# избегаем дублирования хендлеров (важно при reload / notebook / uvicorn)
+if not log.handlers:
+
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(message)s"
+    )
+
+    # console
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+
+    # file
+    file_handler = logging.FileHandler("indexing.log", encoding="utf-8")
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+
+    log.addHandler(console_handler)
+    log.addHandler(file_handler)
 
 # ---------------------------------------------------------------------------
 # Block dataclass
@@ -65,12 +91,13 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 class Block:
     """Единица индексации — один смысловой блок или его дочерний элемент."""
     block_id:   str
-    block_type: str                      # course_info / topic / competency / …
-    block_name: str                      # человекочитаемое название
-    text:       str                      # полный текст для эмбединга
-    parent_id:  str | None   = None      # None — корневой блок
-    summary:    str          = ""        # заполняет Summarizer
-    metadata:   dict[str, Any] = field(default_factory=dict)
+    block_type: str
+    block_name: str
+    text:       str
+    parent_id:  str | None      = None
+    summary:    str             = ""
+    questions:  str             = ""   # вопросы, на которые отвечает блок
+    metadata:   dict[str, Any]  = field(default_factory=dict)
 
     def add_meta(self, **kwargs) -> "Block":
         self.metadata.update(kwargs)
@@ -82,13 +109,11 @@ class Block:
 # ---------------------------------------------------------------------------
 
 def _make_id(discipline: str, *parts: str) -> str:
-    """Детерминированный UUID5 на основе дисциплины и любых ключей."""
     key = "|".join([discipline, *parts])
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, key))
 
 
 def _flatten(obj: Any, sep: str = "\n") -> str:
-    """Рекурсивно собирает строки из dict / list / str."""
     if obj is None:
         return ""
     if isinstance(obj, str):
@@ -106,7 +131,6 @@ def _flatten(obj: Any, sep: str = "\n") -> str:
 
 
 def _section_text(section: Any) -> str:
-    """Собирает текст из блока вида {text: ..., children: {...}}."""
     if section is None:
         return ""
     if isinstance(section, str):
@@ -125,14 +149,10 @@ def _section_text(section: Any) -> str:
 
 
 # ---------------------------------------------------------------------------
-# 1. BlockBuilder — строит иерархию Block из JSON
+# 1. BlockBuilder
 # ---------------------------------------------------------------------------
 
 class BlockBuilder:
-    """
-    Строит плоский список Block из processed JSON.
-    Родительские блоки хранят overview; дочерние — полное содержание.
-    """
 
     def build(self, data: dict) -> list[Block]:
         discipline = data.get("discipline", "")
@@ -143,15 +163,14 @@ class BlockBuilder:
         blocks.append(self._course_info(data, discipline, base))
         blocks.extend(self._topics(data, discipline, base))
         blocks.extend(self._competencies(data, discipline, base))
+        blocks.extend(self._self_study(data, discipline, base))   # ← новый метод
 
         for key, btype, label in [
-            ("self_study_resources", "self_study_resources",
-             "Учебно-методическое обеспечение самостоятельной работы"),
-            ("assessment_fund",      "assessment_fund",
+            ("assessment_fund", "assessment_fund",
              "Фонд оценочных средств / примерные вопросы к аттестации"),
-            ("literature",           "literature",
+            ("literature",      "literature",
              "Перечень учебной литературы"),
-            ("online_resources",     "online_resources",
+            ("online_resources", "online_resources",
              "Интернет-ресурсы для освоения дисциплины"),
         ]:
             b = self._simple_section(
@@ -197,7 +216,7 @@ class BlockBuilder:
             text       = "\n".join(lines),
         ).add_meta(**base, block="course_info")
 
-    # --- topics (родитель + дочерние) ---
+    # --- topics ---
 
     def _topics(self, data: dict, discipline: str, base: dict) -> list[Block]:
         topics_list = data.get("topics") or []
@@ -272,7 +291,7 @@ class BlockBuilder:
 
         return [parent, *children]
 
-    # --- competencies (родитель + дочерние) ---
+    # --- competencies ---
 
     def _competencies(self, data: dict, discipline: str, base: dict) -> list[Block]:
         comp_list = data.get("competencies") or []
@@ -313,7 +332,7 @@ class BlockBuilder:
                 Block(
                     block_id   = _make_id(discipline, "competency", code),
                     block_type = "competency",
-                    block_name = f"Компетенция {code}: {name[:60]}",
+                    block_name = f"Компетенция {code}",
                     text       = "\n\n".join(parts),
                     parent_id  = parent_id,
                 ).add_meta(
@@ -325,6 +344,64 @@ class BlockBuilder:
             )
 
         return [parent, *children]
+
+    # --- self_study_resources (НОВЫЙ МЕТОД — вместо _simple_section) ---
+
+    def _self_study(self, data: dict, discipline: str, base: dict) -> list[Block]:
+        """
+        self_study_resources — словарь {заголовок_подраздела: текст}.
+        Каждый подраздел индексируется отдельным блоком чтобы:
+          - заголовок подраздела стал block_name (основа для questions_vec)
+          - summary LLM правильно описал именно этот подраздел
+          - поиск находил нужный раздел (вопросы к контрольной, к экзамену и т.д.)
+
+        Старый _simple_section был неверен: _section_text искал ключи "text"/"children",
+        которых нет — возвращал пустую строку и блок молча выбрасывался.
+        """
+        section = data.get("self_study_resources")
+        if not section:
+            return []
+
+        # Если вдруг строка — один плоский блок
+        if isinstance(section, str):
+            if not section.strip():
+                return []
+            return [Block(
+                block_id   = _make_id(discipline, "self_study_resources"),
+                block_type = "self_study_resources",
+                block_name = "Учебно-методическое обеспечение самостоятельной работы",
+                text       = section,
+            ).add_meta(**base, block="self_study_resources")]
+
+        if not isinstance(section, dict):
+            return []
+
+        parent_id = _make_id(discipline, "self_study_resources")
+        parent = Block(
+            block_id   = parent_id,
+            block_type = "self_study_resources",
+            block_name = "Учебно-методическое обеспечение самостоятельной работы",
+            text       = "\n".join(k for k in section),
+        ).add_meta(**base, block="self_study_resources")
+
+        children = []
+        for idx, (title, content) in enumerate(section.items()):
+            text = content if isinstance(content, str) else _flatten(content)
+            if not text.strip():
+                continue
+            children.append(
+                Block(
+                    block_id   = _make_id(discipline, "self_study", str(idx)),
+                    block_type = "self_study_section",
+                    # Заголовок подраздела как block_name — LLM сгенерирует
+                    # вопросы именно про этот раздел ("вопросы к контрольной" и т.д.)
+                    block_name = title,
+                    text       = f"{title}\n\n{text}",
+                    parent_id  = parent_id,
+                ).add_meta(**base, block="self_study_section", section_title=title)
+            )
+
+        return [parent, *children] if children else []
 
     # --- простые плоские блоки ---
 
@@ -346,9 +423,8 @@ class BlockBuilder:
             text       = text,
         ).add_meta(**meta)
 
-    # --- other_sections (родитель + дочерние подразделы) ---
-
-    def _other_sections(self, other: Any, discipline: str, base: dict) -> list[Block]:
+    # --- other_sections ---
+    ''' def _other_sections(self, other: Any, discipline: str, base: dict) -> list[Block]:
         if not other:
             return []
 
@@ -363,7 +439,6 @@ class BlockBuilder:
         if not isinstance(other, dict):
             return []
 
-        # Одиночный блок {text, children} или словарь подразделов
         is_single = set(other.keys()) <= {"text", "children"}
         if is_single:
             b = self._simple_section(
@@ -390,7 +465,7 @@ class BlockBuilder:
                 Block(
                     block_id   = _make_id(discipline, "other_section", str(idx)),
                     block_type = "other_section",
-                    block_name = title[:120],
+                    block_name = title,
                     text       = text,
                     parent_id  = parent_id,
                 ).add_meta(**base, block="other_section", section_title=title)
@@ -398,11 +473,79 @@ class BlockBuilder:
 
         if not children:
             return []
+        return [parent, *children]'''
+
+    def _other_sections(self, other: Any, discipline: str, base: dict) -> list[Block]:
+        if not other:
+            return []
+
+        if isinstance(other, str):
+            b = self._simple_section(
+                other,
+                "other_sections",
+                "Дополнительные разделы рабочей программы",
+                discipline,
+                {**base, "block": "other_sections"},
+            )
+            return [b] if b else []
+
+        if not isinstance(other, dict):
+            return []
+
+        is_single = set(other.keys()) <= {"text", "children"}
+        if is_single:
+            b = self._simple_section(
+                other,
+                "other_sections",
+                "Дополнительные разделы рабочей программы",
+                discipline,
+                {**base, "block": "other_sections"},
+            )
+            return [b] if b else []
+
+        parent_id = _make_id(discipline, "other_sections")
+
+        # 🔷 Parent = только структура, без текста вообще
+        parent = Block(
+            block_id=parent_id,
+            block_type="other_sections",
+            block_name="Дополнительные разделы рабочей программы",
+            text="",  # важно: не индексируем шум
+        ).add_meta(
+            **base,
+            block="other_sections",
+            subsections=list(other.keys()),
+            children_count=len(other),
+        )
+
+        children = []
+        for idx, (title, content) in enumerate(other.items()):
+            text = _section_text(content)
+            if not text or not text.strip():
+                continue
+
+            children.append(
+                Block(
+                    block_id=_make_id(discipline, "other_section", str(idx)),
+                    block_type="other_section",
+                    block_name=title,
+                    text=text,
+                    parent_id=parent_id,
+                ).add_meta(
+                    **base,
+                    block="other_section",
+                    section_title=title,
+                )
+            )
+
+        if not children:
+            return []
+
         return [parent, *children]
 
 
 # ---------------------------------------------------------------------------
-# 2. Summarizer — LLM-резюме через OpenAI-совместимый API
+# 2. Summarizer
 # ---------------------------------------------------------------------------
 
 SUMMARY_PROMPT = """\
@@ -426,16 +569,16 @@ SUMMARY_PROMPT = """\
 - «Блок содержит сводную информацию о дисциплине: кафедру, перечень компетенций \
 (ПКН-4, SS-1), общую трудоёмкость 8 зачётных единиц (288 часов), \
 разбивку по двум семестрам, форму аттестации — экзамен.»
-- «Блок описывает компетенцию ПКН-4 "Способен проектировать программные системы". \
-Содержит 3 индикатора достижения, планируемые знания и умения по языку Python, \
-типовые контрольные задания на разработку и тестирование кода.»
+- «Блок описывает раздел самостоятельной работы. Содержит примерные вопросы \
+к контрольной работе для 1 и 2 семестра, задания на программирование на Python, \
+критерии балльной оценки текущего контроля успеваемости.»
 
 Тип блока: {block_type}
 Название: {block_name}
 
 Текст блока:
 {text}
-"""
+""".strip()
 
 
 class Summarizer:
@@ -446,7 +589,7 @@ class Summarizer:
         prompt = SUMMARY_PROMPT.format(
             block_type = block.block_type,
             block_name = block.block_name,
-            text       = block.text[:6000],
+            text       = block.text,
         )
         for attempt in range(1, LLM_MAX_RETRIES + 1):
             try:
@@ -465,13 +608,106 @@ class Summarizer:
                     log.error("Rate limit исчерпан, резюме пропущено: %s", block.block_id)
                     return ""
             except Exception as exc:
-                log.error("Ошибка LLM для %s: %s", block.block_id, exc)
+                log.error("Ошибка Summarizer для %s: %s", block.block_id, exc)
                 return ""
         return ""
 
 
 # ---------------------------------------------------------------------------
-# 3. Embedder — sentence-transformers, multilingual
+# 3. QuestionsGenerator
+# ---------------------------------------------------------------------------
+
+
+QUESTIONS_PROMPT = """\
+Ты — эксперт по созданию поисковых запросов для векторной базы учебных программ дисциплин.
+
+Твоя задача: для данного блока рабочей программы дисциплины сгенерировать **ровно {n}** очень качественных и разнообразных вопросов, на которые этот блок содержит точный и полный ответ.
+
+### Требования к вопросам (обязательно соблюдать):
+
+1. **Максимальное разнообразие**:
+   - Разные типы вопросов: "сколько / как много", "какие именно", "что входит / что включает", "как проводится / в какой форме", "есть ли / предусмотрено ли", "каковы критерии / требования".
+   - Избегай шаблонных начал. Не начинай больше одного вопроса со слов "Сколько...", "Какие...", "Что включает...".
+
+2. **Высокая специфичность**:
+   - Обязательно используй реальные названия из блока (название темы, компетенции, раздела самостоятельной работы и т.д.).
+   - Не используй обобщения типа "в этой теме", "в этом блоке", "здесь".
+   - Вопрос должен быть понятен без контекста блока.
+
+3. **Реалистичность**:
+   - Вопросы должны звучать как реальные запросы студентов или преподавателей.
+   - Примеры хорошего стиля: 
+     - "Сколько часов самостоятельной работы предусмотрено по теме «Словари и множества»?"
+     - "Какие вопросы выносятся на практические занятия по теме «Рекурсия»?"
+     - "В какой форме проходит текущий контроль по дисциплине «Алгоритмы и структуры данных в Python»?"
+     - "Какие типовые контрольные задания есть по индикатору ПКН-4?"
+
+### Примеры хороших наборов вопросов:
+
+Блок: Тема 3: Рекурсия
+Хорошие вопросы:
+Сколько часов отведено на изучение рекурсии в дисциплине «Алгоритмы и структуры данных»?
+Какие задачи на рекурсию разбираются на практических занятиях?
+В какой форме студенты сдают самостоятельную работу по теме «Рекурсия»?
+
+Блок: Общие сведения о дисциплине
+Хорошие вопросы:
+Какая форма итоговой аттестации по дисциплине «Алгоритмы и структуры данных в Python»?
+Сколько всего зачётных единиц и академических часов составляет дисциплина?
+Какие компетенции формирует курс «Алгоритмы и структуры данных в Python»?
+
+### Сейчас сгенерируй вопросы для следующего блока:
+
+Тип блока: {block_type}
+Название блока: {block_name}
+
+Текст блока:
+{text}
+
+Сгенерируй **ровно {n}** вопросов. Каждый вопрос — с новой строки, без нумерации, без кавычек и дополнительных пояснений.
+""".strip()
+
+class QuestionsGenerator:
+    def __init__(self) -> None:
+        self._client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
+
+    def generate(self, block: Block, n: int = QUESTIONS_COUNT) -> str:
+        """
+        Генерирует n вопросов к блоку.
+        Возвращает их одной строкой через \\n — она и будет эмбедирована как questions_vec.
+        Логика: запрос пользователя семантически близок к вопросам,
+        а не к канцелярским названиям разделов РПД.
+        """
+        prompt = QUESTIONS_PROMPT.format(
+            n          = n,
+            block_type = block.block_type,
+            block_name = block.block_name,
+            text       = block.text,
+        )
+        for attempt in range(1, LLM_MAX_RETRIES + 1):
+            try:
+                resp = self._client.chat.completions.create(
+                    model      = LLM_MODEL_IDX,
+                    max_tokens = LLM_MAX_TOKENS_IDX,
+                    messages   = [{"role": "user", "content": prompt}],
+                )
+                return resp.choices[0].message.content.strip()
+            except RateLimitError:
+                if attempt < LLM_MAX_RETRIES:
+                    log.warning("Rate limit, повтор через %d с. (попытка %d/%d)",
+                                LLM_RETRY_DELAY, attempt, LLM_MAX_RETRIES)
+                    time.sleep(LLM_RETRY_DELAY * attempt)
+                else:
+                    log.error("Rate limit исчерпан, вопросы пропущены: %s", block.block_id)
+                    return block.block_name  # fallback
+            except Exception as exc:
+                log.error("Ошибка QuestionsGenerator для %s: %s", block.block_id, exc)
+                return block.block_name
+        return block.block_name
+
+
+# ---------------------------------------------------------------------------
+# 4. Embedder
 # ---------------------------------------------------------------------------
 
 class Embedder:
@@ -488,7 +724,7 @@ class Embedder:
 
 
 # ---------------------------------------------------------------------------
-# 4. QdrantStore — векторная БД
+# 5. QdrantStore
 # ---------------------------------------------------------------------------
 
 class QdrantStore:
@@ -507,19 +743,12 @@ class QdrantStore:
 
     def _ensure_collection(self) -> None:
         existing = {c.name for c in self._client.get_collections().collections}
-
         if self._collection not in existing:
             self._client.create_collection(
                 collection_name=self._collection,
                 vectors_config={
-                    VEC_TEXT: VectorParams(
-                        size=EMBED_DIM,
-                        distance=Distance.COSINE,
-                    ),
-                    VEC_SUMMARY: VectorParams(
-                        size=EMBED_DIM,
-                        distance=Distance.COSINE,
-                    ),
+                    VEC_QUESTIONS: VectorParams(size=EMBED_DIM, distance=Distance.COSINE),
+                    VEC_SUMMARY:   VectorParams(size=EMBED_DIM, distance=Distance.COSINE),
                 },
             )
             log.info("Коллекция «%s» создана (dim=%d).", self._collection, EMBED_DIM)
@@ -537,17 +766,19 @@ class QdrantStore:
 
 
 # ---------------------------------------------------------------------------
-# 5. Indexer — оркестратор
+# 6. Indexer
 # ---------------------------------------------------------------------------
 
 class Indexer:
     """
-    Полный пайплайн: JSON → блоки → резюме → эмбединги → Qdrant.
+    Полный пайплайн: JSON → блоки → резюме + вопросы → эмбединги → Qdrant.
 
-    Параметры:
-        qdrant_url   — URL Qdrant или ":memory:" для тестов
-        collection   — имя коллекции
-        skip_summary — True = пропустить LLM-шаг (быстро, без резюме)
+    Два вектора на блок:
+      questions_vec — эмбединг вопросов, на которые отвечает блок.
+                      Запросы пользователя семантически близки к вопросам.
+      summary_vec   — эмбединг описания содержимого блока.
+                      Хорошо ловит описательные / тематические запросы.
+    Поиск ведётся по обоим через RRF (reciprocal rank fusion) в retrieval.py.
     """
 
     def __init__(
@@ -558,62 +789,106 @@ class Indexer:
     ) -> None:
         self._builder    = BlockBuilder()
         self._summarizer = None if skip_summary else Summarizer()
+        self._questions  = None if skip_summary else QuestionsGenerator()
         self._embedder   = Embedder()
         self._store      = QdrantStore(qdrant_url, collection)
 
     def index_file(self, path: str) -> int:
-        """Индексирует один JSON-файл. Возвращает число загруженных точек."""
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return self.index(data)
 
     def index(self, data: dict) -> int:
-        """Индексирует уже загруженный dict. Возвращает число загруженных точек."""
         discipline = data.get("discipline", "unknown")
         log.info("Индексация: «%s»", discipline)
 
         blocks = self._builder.build(data)
         log.info("Построено %d блоков.", len(blocks))
 
+        similarities: list[float] = []   # ← для статистики
+
         if self._summarizer:
             for i, block in enumerate(blocks, 1):
-                log.info("[%d/%d] блок: %s", i, len(blocks), block.block_name)
+                log.info("[%d/%d] %s", i, len(blocks), block.block_name)
 
-                summary = self._summarizer.summarize(block)
+                block.summary   = self._summarizer.summarize(block)
+                block.questions = self._questions.generate(block)
 
-                log.info("        summary: %s", (summary or ""))
+                log.info("  summary:   %s", block.summary[:200] + "..." if len(block.summary) > 200 else block.summary)
+                log.info("  questions: %s", block.questions)
 
-                block.summary = summary
+                # === Проверка схожести ===
+                if block.summary.strip() and block.questions.strip():
+                    sim = self._compute_questions_summary_similarity(block.questions, block.summary)
+                    similarities.append(sim)
+                    log.info("  similarity (q vs s): %.4f", sim)
+
+                    if sim > 0.78:
+                        log.warning("  ⚠️  ВЫСОКАЯ схожесть (%.4f) — questions_vec может быть слабым!", sim)
+                    elif sim > 0.72:
+                        log.info("  ⚠️  Средняя схожесть (%.4f)", sim)
+                # =========================
+        else:
+            log.info("Режим --skip-summary: вопросы и summary не генерируются.")
 
         points = self._build_points(blocks)
         self._store.upsert(points)
-        log.info("Готово: %d точек → коллекция «%s» (итого в БД: %d).",
-                 len(points), self._store._collection, self._store.count())
+
+        # === Итоговая статистика схожести ===
+        if similarities:
+            avg_sim = np.mean(similarities)
+            max_sim = np.max(similarities)
+            min_sim = np.min(similarities)
+            high_sim_count = sum(1 for s in similarities if s > 0.78)
+
+            log.info("=" * 60)
+            log.info("СТАТИСТИКА СХОЖЕСТИ questions_vec vs summary_vec для дисциплины «%s»", discipline)
+            log.info("Средняя схожесть: %.4f", avg_sim)
+            log.info("Максимальная:     %.4f", max_sim)
+            log.info("Минимальная:      %.4f", min_sim)
+            log.info("Блоков с высокой схожестью (>0.78): %d из %d (%.1f%%)",
+                     high_sim_count, len(similarities), 100 * high_sim_count / len(similarities))
+            log.info("=" * 60)
+
+            if avg_sim > 0.75:
+                log.warning("❗ Рекомендуется улучшить промпт генерации вопросов — слишком высокая схожесть!")
+            elif avg_sim < 0.68:
+                log.info("✅ Отличное разделение сигналов между questions_vec и summary_vec.")
+
+        log.info(
+            "Готово: %d точек → коллекция «%s» (итого в БД: %d).",
+            len(points), self._store._collection, self._store.count()
+        )
         return len(points)
 
     def _build_points(self, blocks: list[Block]) -> list[PointStruct]:
-        # Эмбединг названия раздела — короткий, всегда влезает в лимит модели
-        names     = [b.block_name          for b in blocks]
-        # Эмбединг резюме — семантически плотное представление содержимого
-        # Fallback на block_name если резюме не было сгенерировано
+        # questions_vec: вопросы к блоку — близки к живым запросам пользователя
+        # Fallback на block_name если вопросы не сгенерированы (--skip-summary)
+        questions = [b.questions or b.block_name for b in blocks]
+
+        # summary_vec: описание содержимого — близко к тематическим запросам
         summaries = [b.summary or b.block_name for b in blocks]
 
-        text_vecs    = self._batch_encode(names)
-        summary_vecs = self._batch_encode(summaries)
+        question_vecs = self._batch_encode(questions)
+        summary_vecs  = self._batch_encode(summaries)
 
         points = []
-        for block, tv, sv in zip(blocks, text_vecs, summary_vecs):
+        for block, qv, sv in zip(blocks, question_vecs, summary_vecs):
             payload = {
                 "block_type": block.block_type,
                 "block_name": block.block_name,
                 "text":       block.text,
                 "summary":    block.summary,
+                "questions":  block.questions,  # сохраняем для отладки
                 "parent_id":  block.parent_id,
                 **block.metadata,
             }
             points.append(PointStruct(
-                id      = block.block_id,
-                vector = {VEC_TEXT: tv, VEC_SUMMARY: sv},
+                id     = block.block_id,
+                vector = {
+                    VEC_QUESTIONS: qv,
+                    VEC_SUMMARY:   sv,
+                },
                 payload = payload,
             ))
         return points
@@ -621,12 +896,27 @@ class Indexer:
     def _batch_encode(self, texts: list[str]) -> list[list[float]]:
         result = []
         for i in range(0, len(texts), EMBED_BATCH_SIZE):
-            batch = texts[i : i + EMBED_BATCH_SIZE]
+            batch = texts[i: i + EMBED_BATCH_SIZE]
             result.extend(self._embedder.encode(batch))
             log.debug("Эмбединги: %d/%d", min(i + EMBED_BATCH_SIZE, len(texts)), len(texts))
         return result
 
+    def _compute_questions_summary_similarity(self, questions_text: str, summary_text: str) -> float:
+        """Вычисляет косинусную схожесть между questions и summary одного блока."""
+        if not questions_text.strip() or not summary_text.strip():
+            return 0.0
+        try:
+            vec_q = self._embedder.encode_one(questions_text)
+            vec_s = self._embedder.encode_one(summary_text)
 
+            vec_q = np.array(vec_q).reshape(1, -1)
+            vec_s = np.array(vec_s).reshape(1, -1)
+
+            sim = cosine_similarity(vec_q, vec_s)[0][0]
+            return float(sim)
+        except Exception as e:
+            log.error("Ошибка при вычислении similarity для блока: %s", e)
+            return 0.0
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -638,48 +928,41 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Индексация JSON-файла или папки с JSON-файлами"
     )
-    parser.add_argument(
-        "input",
-        help="Путь к JSON-файлу или папке с JSON-файлами"
-    )
-    parser.add_argument("--qdrant",       default=QDRANT_URL,        help="URL Qdrant")
-    parser.add_argument("--collection",   default=QDRANT_COLLECTION, help="Имя коллекции")
-    parser.add_argument("--skip-summary", action="store_true",       help="Пропустить LLM-резюме")
-    parser.add_argument("--memory",       action="store_true",       help="In-memory Qdrant (тест)")
+    parser.add_argument("input",          help="Путь к JSON-файлу или папке")
+    parser.add_argument("--qdrant",       default=QDRANT_URL)
+    parser.add_argument("--collection",   default=QDRANT_COLLECTION)
+    parser.add_argument("--skip-summary", action="store_true",
+                        help="Пропустить LLM-шаг (без резюме и вопросов)")
+    parser.add_argument("--memory",       action="store_true",
+                        help="In-memory Qdrant (тест)")
     args = parser.parse_args()
 
     indexer = Indexer(
-        qdrant_url=":memory:" if args.memory else args.qdrant,
-        collection=args.collection,
-        skip_summary=args.skip_summary,
+        qdrant_url   = ":memory:" if args.memory else args.qdrant,
+        collection   = args.collection,
+        skip_summary = args.skip_summary,
     )
 
     input_path = Path(args.input)
     total = 0
 
-    # 📄 Один файл
     if input_path.is_file():
         total += indexer.index_file(str(input_path))
-
-    # 📁 Папка с файлами
     elif input_path.is_dir():
         files = list(input_path.glob("*.json"))
-
         if not files:
             print("❌ В папке нет JSON-файлов")
             exit(1)
-
         for i, f in enumerate(files, 1):
-            print(f"[{i}/{len(files)}] Индексация: {f}")
+            print(f"[{i}/{len(files)}] {f}")
             try:
                 n = indexer.index_file(str(f))
                 total += n
                 print(f"  → {n} блоков")
             except Exception as e:
                 print(f"  ✗ Ошибка: {e}")
-
     else:
-        print("❌ Указанный путь не существует")
+        print("❌ Путь не существует")
         exit(1)
 
     print(f"\n✅ Итого проиндексировано: {total} блоков")

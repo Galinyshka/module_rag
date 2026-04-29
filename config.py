@@ -51,7 +51,7 @@ QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "discipline_chunks")
 
 VEC_QUESTIONS  = "questions_vec"   
 VEC_SUMMARY    = "summary_vec"   
-QUESTIONS_COUNT = 5              
+QUESTIONS_COUNT = 3              
 # ---------------------------------------------------------------------------
 # Embeddings
 # ---------------------------------------------------------------------------
