@@ -49,9 +49,9 @@ LLM_MAX_RETRIES = 3
 QDRANT_URL        = os.getenv("QDRANT_URL",        "http://localhost:6333")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "discipline_chunks")
 
-VEC_TEXT    = "text"
-VEC_SUMMARY = "summary"
-
+VEC_QUESTIONS  = "questions_vec"   
+VEC_SUMMARY    = "summary_vec"   
+QUESTIONS_COUNT = 5              
 # ---------------------------------------------------------------------------
 # Embeddings
 # ---------------------------------------------------------------------------
