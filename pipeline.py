@@ -9,7 +9,6 @@ RAG-пайплайн: оркестратор всех модулей.
     → FactExtractor          (прямое извлечение для single.simple — если находит)
     → GenerationModule       (если FactExtractor не сработал)
     → VerificationModule
-    → TimeFilter
     → RAGResponse
 
 Fallback для single-запросов:
@@ -27,7 +26,6 @@ from models        import QueryType, RAGResponse, VerificationResult
 from reranker      import Reranker
 from retrieval     import RetrievalModule
 from router        import Router
-from time_filter   import TimeFilter
 from verification  import VerificationModule
 
 log = logging.getLogger(__name__)
@@ -61,7 +59,6 @@ class RAGPipeline:
         self._fact_extractor = FactExtractor()
         self._generation    = GenerationModule()
         self._verification  = VerificationModule()
-        self._time_filter   = TimeFilter()
         log.info("Пайплайн готов.")
 
     # ------------------------------------------------------------------
@@ -90,8 +87,6 @@ class RAGPipeline:
             )
             fact_extracted = False
 
-        # 6. Time Filter — постпроцессинг в самом конце
-        answer = self._time_filter.apply(query, answer)
 
         return RAGResponse(
             answer            = answer,
