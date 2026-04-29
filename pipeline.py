@@ -32,6 +32,9 @@ log = logging.getLogger(__name__)
 
 MAX_RETRIES  = 1
 NO_DATA_MSG  = "К сожалению, в базе знаний недостаточно данных для ответа на этот вопрос."
+CLARIFY_MSG    = "Пожалуйста, уточните запрос."
+NOT_FOUND_MSG  = "Указанная дисциплина не найдена в базе учебных программ."
+IRRELEVANT_MSG = "Этот вопрос не относится к учебным программам (РПД). Я могу помочь только с вопросами по дисциплинам."
 SINGLE_TYPES = {QueryType.SINGLE_SIMPLE, QueryType.SINGLE_GLOBAL}
 
 
@@ -66,10 +69,43 @@ class RAGPipeline:
     # ------------------------------------------------------------------
 
     def ask(self, query: str) -> RAGResponse:
-        log.info("=== Запрос: %s", query[:120])
+        log.info("=== Запрос: %s", query)
 
         # 1. Маршрутизация
         route = self._router.route(query)
+
+        # ↓↓↓ НОВОЕ: ранние выходы для новых типов ↓↓↓
+
+        if route.query_type == QueryType.CLARIFY:
+            return RAGResponse(
+                answer                   = route.reasoning,  # текст вопроса от LLM
+                query_type               = route.query_type,
+                is_verified              = True,
+                chunks_used              = [],
+                fact_extracted           = False,
+                verification_note        = "clarification required",
+                clarification_candidates = route.disciplines,  # кандидаты для выбора
+            )
+
+        if route.query_type == QueryType.NOT_FOUND:
+            return RAGResponse(
+                answer            = NOT_FOUND_MSG,
+                query_type        = route.query_type,
+                is_verified       = True,
+                chunks_used       = [],
+                fact_extracted    = False,
+                verification_note = "discipline not in RPD_NAMES",
+            )
+
+        if route.query_type == QueryType.IRRELEVANT:
+            return RAGResponse(
+                answer            = IRRELEVANT_MSG,
+                query_type        = route.query_type,
+                is_verified       = True,
+                chunks_used       = [],
+                fact_extracted    = False,
+                verification_note = "irrelevant query",
+            )
 
         # 2. Разрешение дисциплин
         resolved = self._retrieval.resolve_disciplines(route.disciplines)

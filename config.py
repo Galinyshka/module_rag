@@ -36,7 +36,7 @@ LLM_MAX_TOKENS_FAST   = 300
 LLM_MAX_TOKENS_VERIFY = 400
 LLM_MAX_TOKENS_MAIN   = 1200
 LLM_MAX_TOKENS_IDX    = 400
-LLM_MAX_TOKENS_TIME   = 150
+#LLM_MAX_TOKENS_TIME   = 150
 LLM_MAX_TOKENS_HYDE   = 200
 LLM_MAX_TOKENS_EVAL   = 300   # оценка по одной метрике: score + rationale
 
@@ -65,3 +65,6 @@ EMBED_BATCH_SIZE = int(os.getenv("EMBED_BATCH_SIZE", "32"))
 # Multilingual cross-encoder, поддерживает русский язык
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
 RERANKER_TOP_K = int(os.getenv("RERANKER_TOP_K", "6"))
+
+
+RPD_NAMES = ['алгоритмы и структуры данных в языке python', 'технологии обработки данных', 'технологии обработки больших данных', 'рекомендательные системы и коллаборативная фильтрация', 'прикладная теория графов', 'обработка текстов на естественных языках', 'машинное зрение', 'глубокое обучение', 'фундаментальные и генеративные модели', 'семантические технологии', 'технологии и алгоритмы анализа сетевых моделей', 'машинное обучение в семантическом и сетевом анализе', 'прикладные задачи машинного обучения']

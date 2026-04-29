@@ -7,6 +7,7 @@ cuda-bindings==13.2.0
 cuda-pathfinder==1.5.3
 cuda-toolkit==13.0.2
 distro==1.9.0
+dotenv==0.9.9
 filelock==3.29.0
 fsspec==2026.3.0
 grpcio==1.80.0
@@ -50,8 +51,10 @@ protobuf==7.34.1
 pydantic==2.13.3
 pydantic_core==2.46.3
 Pygments==2.20.0
+python-dotenv==1.2.2
 PyYAML==6.0.3
 qdrant-client==1.17.1
+RapidFuzz==3.14.5
 regex==2026.4.4
 rich==15.0.0
 safetensors==0.7.0

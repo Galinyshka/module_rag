@@ -30,6 +30,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+from models import QueryType, RAGResponse
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
@@ -42,7 +43,9 @@ log = logging.getLogger(__name__)
 
 PROMPT_REGISTRY: dict[str, tuple[str, str]] = {
     # rag/prompts.py
-    "router":                  ("rag.prompts", "ROUTER_PROMPT"),
+    "router-extract":   ("rag.router", "_PROMPT_EXTRACT_DISCIPLINES"),
+    "router-single":    ("rag.router", "_PROMPT_CLASSIFY_SINGLE"),
+    "router-zero":      ("rag.router", "_PROMPT_CLASSIFY_ZERO"),
     "paraphrase":              ("rag.prompts", "PARAPHRASE_PROMPT"),
     "decompose":               ("rag.prompts", "DECOMPOSE_PROMPT"),
     "hyde":                    ("rag.prompts", "HYDE_PROMPT"),
@@ -174,6 +177,18 @@ class _NoopFactExtractor:
 def _print_response(response, verbose: bool = False) -> None:
     print("\n" + "─" * 60)
     print(f"Тип запроса:       {response.query_type}")
+
+    # Уточнение — отдельный вывод
+    if response.query_type == QueryType.CLARIFY:
+        print("─" * 60)
+        print(response.answer)  # текст вопроса от LLM
+        if response.clarification_candidates:
+            print("\nВозможные варианты:")
+            for i, c in enumerate(response.clarification_candidates, 1):
+                print(f"  {i}. {c}")
+        print()
+        return
+
     print(f"Верифицирован:     {'✓' if response.is_verified else '✗'}")
     print(f"Прямое извлечение: {'да' if response.fact_extracted else 'нет'}")
     if response.verification_note:
@@ -189,13 +204,14 @@ def _print_response(response, verbose: bool = False) -> None:
 
 def _response_to_dict(query: str, response, elapsed: float) -> dict[str, Any]:
     return {
-        "query":             query,
-        "answer":            response.answer,
-        "query_type":        response.query_type,
-        "is_verified":       response.is_verified,
-        "fact_extracted":    response.fact_extracted,
-        "verification_note": response.verification_note,
-        "elapsed_sec":       round(elapsed, 2),
+        "query":                    query,
+        "answer":                   response.answer,
+        "query_type":               response.query_type,
+        "is_verified":              response.is_verified,
+        "fact_extracted":           response.fact_extracted,
+        "verification_note":        response.verification_note,
+        "clarification_candidates": getattr(response, "clarification_candidates", []),  # ← добавить
+        "elapsed_sec":              round(elapsed, 2),
         "chunks_used": [
             {"discipline": c.discipline,
              "block_name": c.block_name,
@@ -229,8 +245,10 @@ def cmd_ask(args: argparse.Namespace) -> None:
 
 
 def cmd_repl(args: argparse.Namespace) -> None:
+    from models import QueryType
     pipeline = _make_pipeline(args)
     print("RAG готова. Введите вопрос или 'exit'.\n")
+
     while True:
         try:
             query = input("Вопрос: ").strip()
@@ -238,10 +256,36 @@ def cmd_repl(args: argparse.Namespace) -> None:
             break
         if not query or query.lower() in ("exit", "quit", "выход"):
             break
+
         t0       = time.perf_counter()
         response = pipeline.ask(query)
         elapsed  = time.perf_counter() - t0
         _print_response(response, verbose=args.verbose)
+
+        # Если нужно уточнение — даём выбрать и повторяем запрос
+        if response.query_type == QueryType.CLARIFY:
+            candidates = response.clarification_candidates
+            try:
+                raw = input("Ваш выбор (номер или название): ").strip()
+            except (EOFError, KeyboardInterrupt):
+                break
+
+            # Пользователь может ввести номер или часть названия
+            if raw.isdigit():
+                idx = int(raw) - 1
+                if 0 <= idx < len(candidates):
+                    clarified_query = f"{query} — {candidates[idx]}"
+                else:
+                    print("Неверный номер, попробуйте снова.")
+                    continue
+            else:
+                clarified_query = f"{query} — {raw}"
+
+            t0       = time.perf_counter()
+            response = pipeline.ask(clarified_query)
+            elapsed  = time.perf_counter() - t0
+            _print_response(response, verbose=args.verbose)
+
         print(f"Время: {elapsed:.2f} с")
 
 
