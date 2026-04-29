@@ -32,8 +32,9 @@ from pathlib import Path
 from typing import Any
 from models import QueryType, RAGResponse
 
-logging.basicConfig(level=logging.WARNING, format="%(levelname)s  %(message)s")
+#logging.basicConfig(level=logging.WARNING, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
+#logging.basicConfig(level=logging.DEBUG)
 
 
 # ---------------------------------------------------------------------------
@@ -54,9 +55,7 @@ PROMPT_REGISTRY: dict[str, tuple[str, str]] = {
     "generate-single-simple":  ("rag.prompts", "GENERATE_PROMPTS"),
     "generate-single-global":  ("rag.prompts", "GENERATE_PROMPTS"),
     "generate-multi-relation": ("rag.prompts", "GENERATE_PROMPTS"),
-    "generate-multi-global":   ("rag.prompts", "GENERATE_PROMPTS"),
-    # rag/time_filter.py
-    "time-extract":            ("rag.time_filter", "EXTRACT_PROMPT"),
+    "generate-multi-global":   ("rag.prompts", "GENERATE_PROMPTS")
 }
 
 # Для GENERATE_PROMPTS — маппинг ключ аргумента → ключ словаря

@@ -8,7 +8,7 @@ from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_FAST, LLM_MAX_TOKENS_FAS
 from models import QueryType, RouteResult
 
 log = logging.getLogger(__name__)
-
+logging.basicConfig(level=logging.DEBUG)
 # ---------------------------------------------------------------------------
 # Настройки fuzzy-поиска
 # ---------------------------------------------------------------------------
@@ -107,7 +107,11 @@ _PROMPT_CLASSIFY_ZERO = """
   какие дисциплины есть, где изучается тема X, в каких курсах упоминается Y.
 
 - "not_found"     — пользователь спрашивает про конкретную дисциплину,
-  которой нет в системе (неизвестный курс, опечатка, вымышленное название).
+  которой нет в системе (неизвестный курс, вымышленное название).
+
+Список возможных дисциплин:
+{disciplines}
+
 
 - "irrelevant"    — запрос вообще не относится к учебным программам.
 
@@ -288,7 +292,7 @@ class Router:
     # ------------------------------------------------------------------
     def _classify_zero(self, query: str) -> QueryType:
         try:
-            data = _llm_call(self._client, _PROMPT_CLASSIFY_ZERO.format(query=query))
+            data = _llm_call(self._client, _PROMPT_CLASSIFY_ZERO.format(query=query, disciplines="\n".join(f"- {d}" for d in RPD_NAMES)))
             return QueryType(data["query_type"])
         except Exception as exc:
             log.warning("classify_zero failed: %s", exc)
