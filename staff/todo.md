@@ -81,14 +81,30 @@ to do:
 
 12. сделать файл с командами проверками всяких случаев интересных
 
-13. разобраться с direct extraction
+13. разобраться с direct extraction, он явно даже для простых самых вопросов делает перефразировки и тд, а это запрос к ллм, долго, платно - лишнее. Надо этот будет фиксить
 
-14. самый сложный промтп PROMPT_CLASSIFY_SINGLE, надо его потестить
+14. ~~самый сложный промтп PROMPT_CLASSIFY_SINGLE, надо его потестить.~~ Пока не трогаем.
 
 15. ~~в случае multi.relation если есть название дисциплины не в реальном списке, то он просто скипает его и идет дальше. Надо обработать~~ вроде сделала, но надо еще мессадж покрасивше сделать
 
+16. сейчас фуззи поиск делает такое:
+INFO:__main__:[5/24] Какая форма промежуточной аттестации в курсе машинное зрение?
+INFO:pipeline:=== Запрос: Какая форма промежуточной аттестации в курсе машинное зрение?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['машинное зрение']
+INFO:router:Fuzzy candidates: ['машинное зрение', 'машинное обучение в семантическом и сетевом анализе']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['машинное зрение']
+INFO:retrieval:'машинное зрение' -> 'Машинное зрение' (1.00)
+
+  думаю надо повысить порог
 
 **Запуск 30.04 10:00**
+
+все синглы правильно классифицирует, пока не трогаем
 
 
 **Примеров:** 41  
