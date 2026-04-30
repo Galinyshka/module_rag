@@ -4,123 +4,17 @@ import re
 import logging
 from openai import OpenAI
 from rapidfuzz import fuzz, process
-from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_FAST, LLM_MAX_TOKENS_FAST, RPD_NAMES
+from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_FAST, LLM_MAX_TOKENS_FAST, RPD_NAMES, FUZZY_THRESHOLD, FUZZY_TOP_K
 from models import QueryType, RouteResult
+from prompts import (
+    PROMPT_EXTRACT_QUERY_DISCIPLINE,
+    PROMPT_EXTRACT_DISCIPLINES,
+    PROMPT_CLASSIFY_SINGLE,
+    PROMPT_CLASSIFY_ZERO,
+)
 
 log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
-# ---------------------------------------------------------------------------
-# Настройки fuzzy-поиска
-# ---------------------------------------------------------------------------
-
-_FUZZY_THRESHOLD = 60   # минимальный score для попадания в кандидаты
-_FUZZY_TOP_K     = 5    # максимум кандидатов, передаваемых в LLM
-
-# ---------------------------------------------------------------------------
-# Промпты
-# ---------------------------------------------------------------------------
-
-_PROMPT_EXTRACT_DISCIPLINES = """
-Ты — ассистент, который определяет, какие учебные дисциплины имеет в виду пользователь.
-
-Тебе дан запрос пользователя и список дисциплин-кандидатов (отобранных заранее по схожести).
-
-Твои возможные решения:
-
-1. Если можешь уверенно определить дисциплину(ы) — верни:
-{{"status": "found", "disciplines": ["точное название из кандидатов", ...]}}
-
-2. Если кандидаты слишком похожи и непонятно, какую дисциплину имеет в виду пользователь — верни:
-{{"status": "clarify", "candidates": ["кандидат 1", "кандидат 2"], "message": "Уточните, пожалуйста: вы имеете в виду «кандидат 1» или «кандидат 2»?"}}
-
-3. Если ни один кандидат не подходит — верни:
-{{"status": "not_found"}}
-
-Правила:
-- Используй ТОЛЬКО названия из списка кандидатов, без изменений.
-- В "found" можно вернуть несколько дисциплин, если пользователь явно упомянул несколько.
-- В "clarify" перечисляй только реально неоднозначные кандидаты (не все подряд).
-- Если один из кандидатов явно точнее совпадает с запросом — выбирай его (status: found), не проси уточнения.
-
-Кандидаты:
-{candidates}
-
-Запрос пользователя:
-{query}
-
-Ответь строго в формате JSON, без пояснений и markdown.
-""".strip()
-
-_PROMPT_CLASSIFY_SINGLE = """
-Ты — ассистент, который классифицирует вопросы об учебных дисциплинах (РПД).
-
-Определи тип запроса:
-
-single.simple — вопрос об одном конкретном факте или поле РПД:
-  - сколько часов / зачётных единиц
-  - какая форма контроля (экзамен, зачёт)
-  - в каком семестре
-  - кто ведёт
-  - какие компетенции формирует
-  - есть ли лабораторные / практики
-
-single.global — запрос на большой раздел, список или обзор дисциплины целиком:
-  - примерные вопросы к экзамену / контрольной / зачёту
-  - перечень тем / список тем раздела
-  - список литературы / источников
-  - критерии оценки / балльная система
-  - задания для самостоятельной работы
-  - чему учит курс / расскажи подробно / опиши программу
-  - как устроен курс / структура дисциплины
-  - содержание семестра
-
-Правило: если ответ на вопрос — это большой текст или список (а не одно-два слова / число) → single.global.
-
-Примеры:
-  "Сколько часов лекций?" → single.simple
-  "Какая форма итогового контроля?" → single.simple
-  "В каком семестре изучается?" → single.simple
-  "Какие компетенции формирует дисциплина?" → single.simple
-  "Примерные вопросы к контрольной работе" → single.global
-  "Вопросы для подготовки к экзамену" → single.global
-  "Какие темы изучаются в 1 семестре?" → single.global
-  "Расскажи о содержании курса" → single.global
-  "Какая литература рекомендована?" → single.global
-  "Как оценивается работа студентов?" → single.global
-  "Какие задания для самостоятельной работы?" → single.global
-
-Запрос пользователя:
-{query}
-
-Ответь строго в формате JSON, без пояснений и markdown:
-{{"query_type": "single.simple"}} или {{"query_type": "single.global"}}
-""".strip()
-
-_PROMPT_CLASSIFY_ZERO = """
-Ты — ассистент, который классифицирует учебные запросы.
-
-Пользователь задал запрос, в котором не удалось распознать ни одной
-дисциплины из списка учебных программ (РПД).
-Определи тип запроса:
-
-- "multi.global"  — запрос касается всего корпуса дисциплин:
-  какие дисциплины есть, где изучается тема X, в каких курсах упоминается Y.
-
-- "not_found"     — пользователь спрашивает про конкретную дисциплину,
-  которой нет в системе (неизвестный курс, вымышленное название).
-
-Список возможных дисциплин:
-{disciplines}
-
-
-- "irrelevant"    — запрос вообще не относится к учебным программам.
-
-Запрос пользователя:
-{query}
-
-Ответь строго в формате JSON, без пояснений и markdown:
-{{"query_type": "multi.global"}} или {{"query_type": "not_found"}} или {{"query_type": "irrelevant"}}
-""".strip()
+logging.basicConfig(level=logging.INFO)
 
 
 # ---------------------------------------------------------------------------
@@ -128,6 +22,7 @@ _PROMPT_CLASSIFY_ZERO = """
 # ---------------------------------------------------------------------------
 
 def _parse_json(text: str) -> dict:
+    """Парсит JSON из ответа модели, убирая markdown-блоки если они есть."""
     text = text.strip()
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
@@ -135,6 +30,7 @@ def _parse_json(text: str) -> dict:
 
 
 def _llm_call(client: OpenAI, prompt: str) -> dict:
+    """Универсальная обёртка для вызова LLM и парсинга JSON-ответа."""
     resp = client.chat.completions.create(
         model=LLM_MODEL_FAST,
         max_tokens=LLM_MAX_TOKENS_FAST,
@@ -143,38 +39,9 @@ def _llm_call(client: OpenAI, prompt: str) -> dict:
     return _parse_json(resp.choices[0].message.content)
 
 
-_PROMPT_EXTRACT_QUERY_DISCIPLINE = """
-Из запроса пользователя извлеки фрагмент, который похож на название учебной дисциплины.
-
-Правила:
-- Верни только предполагаемое название — без лишних слов ("по дисциплине", "курс", "предмет", номера семестров, вопросов и т.д.)
-- Если в запросе несколько возможных названий — верни все.
-- Если ничего похожего на название дисциплины нет — верни пустой список.
-- Не исправляй и не дополняй — верни ровно то, что написал пользователь.
-
-Примеры:
-  "Сколько часов лекций по линейной алгебре?"
-  → {{"names": ["линейная алгебра"]}}
-
-  "Примерные вопросы к контрольной по дисциплине Алгоритмы и структура данных в Python для 1 семестра"
-  → {{"names": ["Алгоритмы и структура данных в Python"]}}
-
-  "Сравни машинное обучение и глубокое обучение"
-  → {{"names": ["машинное обучение", "глубокое обучение"]}}
-
-  "Какая погода сегодня?"
-  → {{"names": []}}
-
-Запрос пользователя:
-{query}
-
-Ответь строго в формате JSON, без пояснений и markdown.
-""".strip()
-
-
 def _extract_query_names(client: OpenAI, query: str) -> list[str]:
-    """Шаг 0: LLM вытаскивает сырые названия из запроса."""
-    prompt = _PROMPT_EXTRACT_QUERY_DISCIPLINE.format(query=query)
+    """ LLM вытаскивает сырые названия из запроса. """
+    prompt = PROMPT_EXTRACT_QUERY_DISCIPLINE.format(query=query)
     try:
         data = _llm_call(client, prompt)
         names = data.get("names") or []
@@ -185,10 +52,7 @@ def _extract_query_names(client: OpenAI, query: str) -> list[str]:
 
 
 def _fuzzy_candidates(extracted_names: list[str]) -> list[str]:
-    """
-    Fuzzy по коротким извлечённым именам — score теперь стабильный.
-    Порог можно поднять до 70+ потому что сравниваем короткое с коротким.
-    """
+    """ Fuzzy поиск кандидатов по настоящим названиям дисциплин."""
     if not extracted_names:
         return []
 
@@ -198,10 +62,10 @@ def _fuzzy_candidates(extracted_names: list[str]) -> list[str]:
             name,
             RPD_NAMES,
             scorer=fuzz.token_set_ratio,
-            limit=_FUZZY_TOP_K,
+            limit=FUZZY_TOP_K,
         )
         for match, score, _ in results:
-            if score >= _FUZZY_THRESHOLD:
+            if score >= FUZZY_THRESHOLD:
                 if match not in found or score > found[match]:
                     found[match] = score
 
@@ -215,31 +79,32 @@ def _fuzzy_candidates(extracted_names: list[str]) -> list[str]:
 class Router:
     def __init__(self) -> None:
         self._client  = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
-        self._rpd_set = set(RPD_NAMES)
+        self._rpd_names = set(RPD_NAMES)
 
     # ------------------------------------------------------------------
     # Шаг 1: fuzzy → LLM → дисциплины / уточнение / пусто
     # ------------------------------------------------------------------
     def _extract_disciplines(self, query: str) -> RouteResult | None:
         """
-        Возвращает RouteResult только если уже можно завершить маршрутизацию:
+        Шаг 1: извлекаем дисциплины из запроса. 
         - нашли дисциплины (found)
         - нужно уточнение (clarify)
         Возвращает None если дисциплины не найдены — тогда route() идёт дальше.
         """
-        # Шаг 0: LLM извлекает сырые имена из запроса
-        extracted_names = _extract_query_names(self._client, query)
-        log.debug("Extracted names from query: %s", extracted_names)
+        # Шаг 1.1: LLM извлекает сырые имена из запроса
+        extracted_names = _extract_query_names(self._client, query) # возвращет список названий строго из запроса, может быть пустым
+        log.info("Extracted names from query: %s", extracted_names)
 
-        # Шаг 1: fuzzy по коротким именам
-        candidates = _fuzzy_candidates(extracted_names)
-        log.debug("Fuzzy candidates: %s", candidates)
+        # Шаг 1.2: fuzzy 
+        candidates = _fuzzy_candidates(extracted_names) # возвращает список кандидатов из RPD_NAMES, отсортированный по убыванию score, может быть пустым
+        log.info("Fuzzy candidates: %s", candidates)
 
         if not candidates:
+            log.info("No fuzzy candidates found, returning None")
             return None
 
         candidates_text = "\n".join(f"- {c}" for c in candidates)
-        prompt = _PROMPT_EXTRACT_DISCIPLINES.format(
+        prompt = PROMPT_EXTRACT_DISCIPLINES.format(
             candidates=candidates_text,
             query=query,
         )
@@ -251,79 +116,79 @@ class Router:
             return None
 
         status = data.get("status")
+        log.info("LLM extraction status: %s", status) # варианты: "found", "clarify", "not_found"
 
+        # Шаг 1.3: анализируем результат LLMа и возвращаем RouteResult
         if status == "found":
-            # Фильтруем строго по RPD_NAMES на случай галлюцинаций
+            # если LLM уверенно нашёл дисциплины, проверяем их на точное совпадение и возвращаем
             raw = data.get("disciplines") or []
-            disciplines = [d for d in raw if d in self._rpd_set]
+            disciplines = [d for d in raw if d in self._rpd_names]
             if disciplines:
                 return RouteResult(
-                    query_type=QueryType.CLARIFY,   # временный, route() заменит
+                    query_type=QueryType.CLARIFY,   # временный статус, который мы потом уточним в route()
                     disciplines=disciplines,
-                    reasoning="found",
+                    message="found",
                 )
-
+    
         elif status == "clarify":
-            ambiguous = [d for d in (data.get("candidates") or []) if d in self._rpd_set]
-            message   = data.get("message", "Уточните, какую дисциплину вы имеете в виду.")
-            if ambiguous:
+            # если LLM сомневается, просим уточнить. Вернуть RouteResult с query_type=CLARIFY и списком кандидатов для выбора.
+            candidates = [d for d in (data.get("candidates") or []) if d in self._rpd_names]
+            message   = "Уточните, пожалуйста: вы имеете в виду " + " или ".join(f"«{d}»" for d in candidates) + "?"
+            if candidates:
                 return RouteResult(
                     query_type=QueryType.CLARIFY,
-                    disciplines=ambiguous,
-                    reasoning=message,
+                    disciplines=candidates,
+                    message=message,
                 )
-
         # status == "not_found" или что-то неожиданное
         return None
 
-    # ------------------------------------------------------------------
-    # Шаг 2а: классифицировать запрос с одной дисциплиной
-    # ------------------------------------------------------------------
+
     def _classify_single(self, query: str) -> QueryType:
+        """ Шаг 2а: классифицировать запрос с одной дисциплиной. """
         try:
-            data = _llm_call(self._client, _PROMPT_CLASSIFY_SINGLE.format(query=query))
+            data = _llm_call(self._client, PROMPT_CLASSIFY_SINGLE.format(query=query))
             return QueryType(data["query_type"])
         except Exception as exc:
             log.warning("classify_single failed: %s", exc)
             return QueryType.SINGLE_SIMPLE
 
-    # ------------------------------------------------------------------
-    # Шаг 2б: классифицировать запрос без дисциплин
-    # ------------------------------------------------------------------
+
     def _classify_zero(self, query: str) -> QueryType:
+        """ Шаг 2б: классифицировать запрос без дисциплин. """
         try:
-            data = _llm_call(self._client, _PROMPT_CLASSIFY_ZERO.format(query=query, disciplines="\n".join(f"- {d}" for d in RPD_NAMES)))
+            data = _llm_call(self._client, PROMPT_CLASSIFY_ZERO.format(query=query, disciplines="\n".join(f"- {d}" for d in RPD_NAMES)))
             return QueryType(data["query_type"])
         except Exception as exc:
             log.warning("classify_zero failed: %s", exc)
             return QueryType.IRRELEVANT
 
-    # ------------------------------------------------------------------
-    # Основной метод
-    # ------------------------------------------------------------------
-    def route(self, query: str) -> RouteResult:
-        try:
-            extraction = self._extract_disciplines(query)
 
-            # Уточнение — возвращаем сразу, без дальнейшей классификации
+    def route(self, query: str) -> RouteResult:
+        """ Главная функция маршрутизации."""
+        try:
+            extraction = self._extract_disciplines(query) # RouteResult с query_type=CLARIFY или None
+
             if extraction and extraction.query_type == QueryType.CLARIFY:
-                if extraction.reasoning == "found":
-                    # LLM нашёл уверенно — классифицируем по количеству
+                if extraction.message == "found":
+                    # LLM нашёл уверенно, фильтруем по количеству дисциплин 
                     disciplines = extraction.disciplines
                     n = len(disciplines)
                     if n > 1:
+                        # если дисциплин несколько — это multi.relation
                         query_type = QueryType.MULTI_RELATION
                     else:
-                        query_type = self._classify_single(query)
+                        # если дисциплина одна — нужно понять, single.simple или single.global
+                        query_type = self._classify_single(query) # может вернуть query_type: single.simple или single.global
                     result = RouteResult(query_type=query_type, disciplines=disciplines)
                 else:
-                    # LLM сомневается — просим уточнить
+                    # если message != "found", значит это clarify, возвращаем как есть
                     result = extraction
 
             else:
-                # Дисциплины не найдены вообще
-                query_type = self._classify_zero(query)
-                result = RouteResult(query_type=query_type, disciplines=[])
+                # случай None из extract_disciplines — значит LLM не нашёл дисциплин, нужно классифицировать запрос как zero
+                query_type = self._classify_zero(query) # может вернуть query_type: multi.global, not_found или irrelevant
+                result = RouteResult(query_type=query_type, disciplines=[]) 
 
         except Exception as exc:
             log.warning("Router fallback: %s", exc)
@@ -331,3 +196,4 @@ class Router:
 
         log.info("Router: type=%s  disciplines=%s", result.query_type, result.disciplines)
         return result
+# Дальнейшая обработка RouteResult происходит в pipeline.py, который принимает результат маршрутизации и решает, что делать дальше (например, если query_type=CLARIFY, то возвращает RAGResponse с кандидатами для уточнения).

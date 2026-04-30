@@ -41,7 +41,9 @@ from config import (
 )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
+
 
 
 # ---------------------------------------------------------------------------

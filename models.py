@@ -17,7 +17,7 @@ class QueryType(str, Enum):
 class RouteResult:
     query_type:  QueryType
     disciplines: list[str]
-    reasoning:   str = ""
+    message:   str = ""
 
 
 @dataclass
