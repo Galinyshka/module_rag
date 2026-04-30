@@ -12,15 +12,19 @@ def split_dataset(input_file='datasets/dataset.json'):
     single = []
     relation = []
     global_ds = []
+    router_check = []
     
     for item in data:
         router_type = item.get('router_type', '')
         if router_type in ['single.simple', 'single.global']:
             single.append(item)
+            router_check.append(item)
         elif router_type == 'multi.relation':
             relation.append(item)
         elif router_type == 'multi.global':
             global_ds.append(item)
+        else:
+            router_check.append(item) 
     
     # Сохранение файлов в той же папке
     output_dir = '/'.join(input_file.split('/')[:-1]) or '.'
@@ -34,7 +38,10 @@ def split_dataset(input_file='datasets/dataset.json'):
     with open(f'{output_dir}/global_ds.json', 'w', encoding='utf-8') as f:
         json.dump(global_ds, f, ensure_ascii=False, indent=2)
     
-    print(f"Готово! single_ds.json: {len(single)}, relation_ds.json: {len(relation)}, global_ds.json: {len(global_ds)}")
+    with open(f'{output_dir}/router_check.json', 'w', encoding='utf-8') as f:
+        json.dump(router_check, f, ensure_ascii=False, indent=2)
+    
+    print(f"Готово! single_ds.json: {len(single)}, relation_ds.json: {len(relation)}, global_ds.json: {len(global_ds)}, router_check.json: {len(router_check)}")
 
 # Использование
 if __name__ == '__main__':

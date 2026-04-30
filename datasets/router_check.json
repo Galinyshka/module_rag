@@ -188,5 +188,65 @@
     "ground_discipline": [
       "Семантические технологии"
     ]
+  },
+  {
+    "question": "Изучается ли тема о векторном представлении узлов графа?",
+    "ground_truth": "NOT_FOUND",
+    "router_type": "not_found",
+    "ground_discipline": []
+  },
+  {
+    "question": "Какие основные вопросы включены в перечень подготовки к экзамену?",
+    "ground_truth": "NOT_FOUND",
+    "router_type": "not_found",
+    "ground_discipline": []
+  },
+  {
+    "question": "Какие основные темы для изучения по курсу?",
+    "ground_truth": "NOT_FOUND",
+    "router_type": "not_found",
+    "ground_discipline": []
+  },
+  {
+    "question": "Как работает градиентный спуск в машинном обучении?",
+    "ground_truth": "IRRELEVANT",
+    "router_type": "irrelevant",
+    "ground_discipline": []
+  },
+  {
+    "question": "Что такое нейронная сеть и как она обучается?",
+    "ground_truth": "IRRELEVANT",
+    "router_type": "irrelevant",
+    "ground_discipline": []
+  },
+  {
+    "question": "Для чего используется библиотека NumPy?",
+    "ground_truth": "IRRELEVANT",
+    "router_type": "irrelevant",
+    "ground_discipline": []
+  },
+  {
+    "question": "Что такое DataFrame в Pandas?",
+    "ground_truth": "IRRELEVANT",
+    "router_type": "irrelevant",
+    "ground_discipline": []
+  },
+  {
+    "question": "Сколько часов лекций по дисциплине анализ данных?",
+    "ground_truth": "CLARIFY",
+    "router_type": "clarify",
+    "ground_discipline": []
+  },
+  {
+    "question": "Сколько тем в курсе искусственный интеллект?",
+    "ground_truth": "CLARIFY",
+    "router_type": "clarify",
+    "ground_discipline": []
+  },
+  {
+    "question": "Какие общие темы есть у курсов анализ данных, введение в машинное обучение и искусственный интеллект?",
+    "ground_truth": "CLARIFY",
+    "router_type": "clarify",
+    "ground_discipline": []
   }
 ]

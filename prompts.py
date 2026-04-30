@@ -1,11 +1,11 @@
 """Все промпты RAG-пайплайна.
 
-PROMPT_EXTRACT_QUERY_DISCIPLINE
-PROMPT_EXTRACT_DISCIPLIPROMPT_EXTRACT_QUERY_DISCIPLINENES
-PROMPT_CLASSIFY_SINGLE
-PROMPT_CLASSIFY_ZERO
-PARAPHRASE_PROMPT
-DECOMPOSE_PROMPT
+PROMPT_EXTRACT_QUERY_DISCIPLINE - LLM извлекает из запроса фрагмент, похожий на название дисциплины. Возвращает список названий (может быть пустым).
+PROMPT_EXTRACT_DISCIPLINES - LLM определяет, какие учебные дисциплины имеет в виду пользователь из списка fuzzy-кандидатов. Возвращает статус (found/clarify/not_found) и список дисциплин или кандидатов для уточнения.
+PROMPT_CLASSIFY_SINGLE - LLM классифицирует запрос с одной дисциплиной. Возвращает query_type: single.simple или single.global.
+PROMPT_CLASSIFY_ZERO - LLM классифицирует запрос без дисциплин. Возвращает query_type: multi.global, not_found или irrelevant.
+PARAPHRASE_PROMPT 
+DECOMPOSE_PROMPT 
 HYDE_PROMPT
 GENERATE_SINGLE_SIMPLE
 GENERATE_SINGLE_GLOBAL
