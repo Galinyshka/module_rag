@@ -24,7 +24,7 @@ from fact_extractor import FactExtractor
 from generation    import GenerationModule, build_context
 from models        import QueryType, RAGResponse, VerificationResult
 from reranker      import Reranker
-from retrieval     import RetrievalModule
+from retrieval    import RetrievalModule
 from router        import Router
 from verification  import VerificationModule
 
@@ -74,11 +74,9 @@ class RAGPipeline:
         # 1. Маршрутизация
         route = self._router.route(query)
 
-        # ↓↓↓ НОВОЕ: ранние выходы для новых типов ↓↓↓
-
         if route.query_type == QueryType.CLARIFY:
             return RAGResponse(
-                answer                   = route.reasoning,  # текст вопроса от LLM
+                answer                   = route.message,  # текст вопроса от LLM
                 query_type               = route.query_type,
                 is_verified              = True,
                 chunks_used              = [],

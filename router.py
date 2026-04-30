@@ -51,12 +51,18 @@ def _extract_query_names(client: OpenAI, query: str) -> list[str]:
         return []
 
 
-def _fuzzy_candidates(extracted_names: list[str]) -> list[str]:
-    """ Fuzzy поиск кандидатов по настоящим названиям дисциплин."""
+def _fuzzy_candidates(extracted_names: list[str]) -> tuple[list[str], list[str]]:
+    """Fuzzy поиск кандидатов по настоящим названиям дисциплин.
+    
+    Returns:
+        tuple[list[str], list[str]]: (найденные_кандидаты, не_найденные_имена)
+    """
     if not extracted_names:
-        return []
+        return [], []
+    
+    found_candidates = {}  # словарь для хранения лучших score
+    not_found_names = []
 
-    found: dict[str, float] = {}
     for name in extracted_names:
         results = process.extract(
             name,
@@ -64,12 +70,18 @@ def _fuzzy_candidates(extracted_names: list[str]) -> list[str]:
             scorer=fuzz.token_set_ratio,
             limit=FUZZY_TOP_K,
         )
-        for match, score, _ in results:
-            if score >= FUZZY_THRESHOLD:
-                if match not in found or score > found[match]:
-                    found[match] = score
+        matches = [(match, score) for match, score, _ in results if score >= FUZZY_THRESHOLD]
+        if matches:
+            for match, score in matches:
+                if match not in found_candidates or score > found_candidates[match]:
+                    found_candidates[match] = score
+        else:
+            not_found_names.append(name)
 
-    return sorted(found, key=found.get, reverse=True)
+    # Возвращаем отсортированный список кандидатов
+    candidates = sorted(found_candidates.keys(), key=lambda x: found_candidates[x], reverse=True)
+    
+    return candidates, not_found_names
 
 
 # ---------------------------------------------------------------------------
@@ -95,10 +107,24 @@ class Router:
         extracted_names = _extract_query_names(self._client, query) # возвращет список названий строго из запроса, может быть пустым
         log.info("Extracted names from query: %s", extracted_names)
 
-        # Шаг 1.2: fuzzy 
-        candidates = _fuzzy_candidates(extracted_names) # возвращает список кандидатов из RPD_NAMES, отсортированный по убыванию score, может быть пустым
-        log.info("Fuzzy candidates: %s", candidates)
+        if not extracted_names:
+            # если LLM не извлёк ничего, возвращаем None, чтобы route() попытался классифицировать запрос как zero
+            log.info("No extracted names, returning None")
+            return None
 
+        # Шаг 1.2: fuzzy 
+        candidates, not_found_names = _fuzzy_candidates(extracted_names)
+        log.info("Fuzzy candidates: %s", candidates)
+        log.info("Not found names: %s", not_found_names)
+
+        if not_found_names:
+            message = "Дисциплины " + ", ".join(not_found_names) + " не найдены."
+            return RouteResult(
+                query_type=QueryType.CLARIFY,
+                disciplines=candidates,
+                message=message,
+            )
+        
         if not candidates:
             log.info("No fuzzy candidates found, returning None")
             return None
