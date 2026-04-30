@@ -83,6 +83,7 @@ class RAGPipeline:
                 fact_extracted           = False,
                 verification_note        = "clarification required",
                 clarification_candidates = route.disciplines,  # кандидаты для выбора
+                disciplines = route.disciplines
             )
 
         if route.query_type == QueryType.NOT_FOUND:
@@ -93,6 +94,7 @@ class RAGPipeline:
                 chunks_used       = [],
                 fact_extracted    = False,
                 verification_note = "discipline not in RPD_NAMES",
+                disciplines = route.disciplines
             )
 
         if route.query_type == QueryType.IRRELEVANT:
@@ -103,6 +105,7 @@ class RAGPipeline:
                 chunks_used       = [],
                 fact_extracted    = False,
                 verification_note = "irrelevant query",
+                disciplines = route.disciplines
             )
 
         # 2. Разрешение дисциплин
@@ -129,6 +132,7 @@ class RAGPipeline:
             chunks_used       = chunks,
             fact_extracted    = fact_extracted,
             verification_note = verified.note,
+            disciplines = route.disciplines
         )
 
     # ------------------------------------------------------------------

@@ -57,4 +57,22 @@ class RAGResponse:
     chunks_used:              list
     fact_extracted:           bool
     verification_note:        str
-    clarification_candidates: list[str] = field(default_factory=list)  # ← добавить
+    clarification_candidates: list[str] = field(default_factory=list)
+    disciplines:              list[str] = field(default_factory=list)
+
+    # ---------------------------------------------------------------------------
+# ПРИМЕЧАНИЕ: что нужно проверить в смежных модулях
+# ---------------------------------------------------------------------------
+# 1. models.py / RAGResponse
+#    Evaluator читает response.disciplines для получения дисциплин от роутера.
+#    Убедитесь, что RAGResponse содержит это поле, например:
+#
+#      @dataclass
+#      class RAGResponse:
+#          answer:      str
+#          query_type:  QueryType
+#          disciplines: list[str]      # ← нужно добавить, если ещё нет
+#          chunks_used: list[Chunk]
+#
+#    В pipeline.py при построении RAGResponse передавайте:
+#      disciplines = route_result.disciplines
