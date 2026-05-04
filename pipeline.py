@@ -155,7 +155,12 @@ class RAGPipeline:
                 break
 
             # Реранкинг
-            chunks = self._reranker.rerank(query, chunks)
+            #chunks = self._reranker.rerank(query, chunks) старый rerank для всех типов запросов
+            # Вместо обычного rerank для multi.relation
+            if expanded.query_type in {QueryType.MULTI_RELATION, QueryType.MULTI_GLOBAL}:
+                chunks = self._reranker.rerank_with_balance(query, chunks, expanded.disciplines)
+            else:
+                chunks = self._reranker.rerank(query, chunks)
 
             # FactExtractor — пробуем прямое извлечение для single.simple
             fact = self._fact_extractor.try_extract(query, chunks, expanded.query_type)
