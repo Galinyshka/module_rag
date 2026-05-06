@@ -137,22 +137,51 @@ class RetrievalModule:
         )
 
     def _retrieve_multi_relation(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
-        """Независимый RRF-поиск по каждой дисциплине — гарантированное покрытие."""
-        disciplines = expanded.disciplines or self._discipline_index
-        queries     = self._queries(expanded)
+        """
+        Независимый RRF-поиск по каждой дисциплине.
+        Для каждой дисциплины используются подзапросы из декомпозиции.
+        """
+        # Только найденные Router'ом дисциплины — без fallback
+        if not expanded.disciplines:
+            log.warning("multi.relation: дисциплины не найдены в запросе")
+            return []
+        
+        # Используем ТОЛЬКО подзапросы из декомпозиции + исходный запрос
+        # (НЕ все перефразировки!)
+        queries = [expanded.original]
+        if expanded.sub_queries:
+            queries.extend(expanded.sub_queries)
+        
+        log.info("multi.relation: исходный запрос + %d подзапросов = %d всего",
+                 len(expanded.sub_queries), len(queries))
+        for i, q in enumerate(queries, 1):
+            log.debug("  [%d] %s", i, q[:60])
+        
+        log.info("multi.relation: поиск по %d дисциплинам",
+                 len(expanded.disciplines))
+        for disc in expanded.disciplines:
+            log.debug("  - %s", disc)
+        
         merged: dict[str, RetrievedChunk] = {}
-        scores: dict[str, float]          = {}
-
-        for disc in disciplines:
-            for c in self._multi_query_rrf(
+        scores: dict[str, float] = {}
+        
+        # Для каждой дисциплины отдельный RRF-поиск
+        for disc in expanded.disciplines:
+            disc_results = self._multi_query_rrf(
                 queries, self._discipline_filter([disc]), TOP_K_PER_DISC
-            ):
+            )
+            log.info("  %s: найдено %d блоков (примеры: %s)",
+                    disc, len(disc_results),
+                    ", ".join([c.block_name[:30] for c in disc_results[:3]]))
+            
+            for c in disc_results:
                 if c.block_id not in merged:
                     merged[c.block_id] = c
                     scores[c.block_id] = c.score
                 else:
                     scores[c.block_id] = max(scores[c.block_id], c.score)
-
+        
+        log.info("multi.relation: итого %d уникальных блоков", len(merged))
         return self._sort_by_score(merged, scores)
 
     def _retrieve_multi_global(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:

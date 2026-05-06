@@ -18,7 +18,19 @@ def build_context(chunks: list[RetrievedChunk]) -> str:
         parts.append(f"=== Дисциплина: {discipline} ===")
         for c in disc_chunks:
             parts.append(f"[{c.block_name}]\n{c.text}")
-    return "\n\n".join(parts)[:MAX_CONTEXT_CHARS]
+    
+    full_context = "\n\n".join(parts)
+    final_context = full_context[:MAX_CONTEXT_CHARS]
+    
+    # Логирование для отладки
+    if len(full_context) > MAX_CONTEXT_CHARS:
+        log.warning("build_context: контекст обрезан %d -> %d симв",
+                   len(full_context), len(final_context))
+        # Посчитаем сколько дисциплин в обрезанном контексте
+        cut_count = final_context.count("=== Дисциплина:")
+        log.warning("  Дисциплин в итоговом контексте: %d", cut_count)
+    
+    return final_context
 
 
 class GenerationModule:

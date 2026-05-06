@@ -303,7 +303,7 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
     results  = []
 
     for i, query in enumerate(queries, 1):
-        print(f"[{i}/{len(queries)}] {query[:70]}")
+        print(f"[{i}/{len(queries)}] {query}")
         t0       = time.perf_counter()
         response = pipeline.ask(query)
         elapsed  = time.perf_counter() - t0
@@ -311,7 +311,7 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
 
         status = "✓" if response.is_verified else "✗"
         flag   = " [direct]" if response.fact_extracted else ""
-        print(f"         {status}{flag}  {elapsed:.2f}с  {response.answer[:80]}\n")
+        print(f"         {status}{flag}  {elapsed:.2f}с  {response.answer}\n")
 
     out_path = args.output or args.input.replace(".json", "_results.json")
     with open(out_path, "w", encoding="utf-8") as f:
