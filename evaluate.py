@@ -692,28 +692,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-# ---------------------------------------------------------------------------
-# ПРИМЕЧАНИЕ: что нужно проверить в смежных модулях
-# ---------------------------------------------------------------------------
-# 1. models.py / RAGResponse
-#    Evaluator читает response.disciplines для получения дисциплин от роутера.
-#    Убедитесь, что RAGResponse содержит это поле, например:
-#
-#      @dataclass
-#      class RAGResponse:
-#          answer:      str
-#          query_type:  QueryType
-#          disciplines: list[str]      # ← нужно добавить, если ещё нет
-#          chunks_used: list[Chunk]
-#
-#    В pipeline.py при построении RAGResponse передавайте:
-#      disciplines = route_result.disciplines
-#
-# 2. router.py — менять не нужно. RouteResult.disciplines уже содержит
-#    финальный список, который пробрасывается в RAGResponse.
-#
-# 3. ground_discipline в датасете — опциональное поле.
-#    Семплы без него (irrelevant, multi.global без привязки) просто
-#    исключаются из discipline-метрик, но учитываются в остальных.

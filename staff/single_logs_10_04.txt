@@ -1,0 +1,730 @@
+INFO:pipeline:Пайплайн готов.
+INFO:__main__:Модель-судья: qwen/qwen3.5-397b-a17b
+INFO:__main__:Оценка 24 примеров (workers=1) ...
+INFO:__main__:[1/24] Сколько часов лекций по дисциплине алгоритмы и структуры данных в пито
+INFO:pipeline:=== Запрос: Сколько часов лекций по дисциплине алгоритмы и структуры данных в питон?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['алгоритмы и структуры данных в питон']
+INFO:router:Fuzzy candidates: ['алгоритмы и структуры данных в языке python']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['алгоритмы и структуры данных в языке python']
+INFO:retrieval:'алгоритмы и структуры данных в языке python' -> 'Алгоритмы и структуры данных в языке Python' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:01<00:00,  1.23s/it]
+INFO:reranker:Reranker: 13 -> 6 чанков (top score=7.898)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Общие сведения о дисциплине «Алгоритмы и структуры данных в языке Python»' -> '32 ч.'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=12.7s
+INFO:__main__:[2/24] Сколько часов семинаров по предмету рекомендательные системы?
+INFO:pipeline:=== Запрос: Сколько часов семинаров по предмету рекомендательные системы?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['рекомендательные системы']
+INFO:router:Fuzzy candidates: ['рекомендательные системы и коллаборативная фильтрация']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['рекомендательные системы и коллаборативная фильтрация']
+INFO:retrieval:'рекомендательные системы и коллаборативная фильтрация' -> 'Рекомендательные системы и коллаборативная фильтрация' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.38it/s]
+INFO:reranker:Reranker: 9 -> 6 чанков (top score=5.341)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Тематический план дисциплины «Рекомендательные системы и коллаборативная фильтрация» (3 тем)' -> '0 ч.'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=10.6s
+INFO:__main__:[3/24] Какова общая трудоемкость курса обработка текстов на естественных язык
+INFO:pipeline:=== Запрос: Какова общая трудоемкость курса обработка текстов на естественных языках?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['обработка текстов на естественных языках']
+INFO:router:Fuzzy candidates: ['обработка текстов на естественных языках']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['обработка текстов на естественных языках']
+INFO:retrieval:'обработка текстов на естественных языках' -> 'Обработка текстов на естественных языках' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+WARNING:expander:Paraphrase failed: Extra data: line 3 column 1 (char 264)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 0 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.53it/s]
+INFO:reranker:Reranker: 8 -> 6 чанков (top score=8.346)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Общие сведения о дисциплине «Обработка текстов на естественных языках»' -> '144 ч.'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=11.0s
+INFO:__main__:[4/24] Сколько тем содержится в курсе прикладной теории графов?
+INFO:pipeline:=== Запрос: Сколько тем содержится в курсе прикладной теории графов?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['прикладной теории графов']
+INFO:router:Fuzzy candidates: ['прикладная теория графов']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['прикладная теория графов']
+INFO:retrieval:'прикладная теория графов' -> 'Прикладная теория графов' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.46it/s]
+INFO:reranker:Reranker: 8 -> 6 чанков (top score=5.360)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Тематический план дисциплины «Прикладная теория графов» (8 тем)' -> '8'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=10.7s
+INFO:__main__:[5/24] Какая форма промежуточной аттестации в курсе машинное зрение?
+INFO:pipeline:=== Запрос: Какая форма промежуточной аттестации в курсе машинное зрение?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['машинное зрение']
+INFO:router:Fuzzy candidates: ['машинное зрение', 'машинное обучение в семантическом и сетевом анализе']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['машинное зрение']
+INFO:retrieval:'машинное зрение' -> 'Машинное зрение' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.18it/s]
+INFO:reranker:Reranker: 9 -> 6 чанков (top score=-1.335)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Тема 1: Введение в машинное зрение' -> 'самостоятельные работы, участие в решении задач на практических занятиях, собесе'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=11.6s
+INFO:__main__:[6/24] Какая форма промежуточной аттестации по дисциплине алгоритмы и структу
+INFO:pipeline:=== Запрос: Какая форма промежуточной аттестации по дисциплине алгоритмы и структура данных в Python в 2 семестре?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['алгоритмы и структура данных в python']
+INFO:router:Fuzzy candidates: ['алгоритмы и структуры данных в языке python']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['алгоритмы и структуры данных в языке python']
+INFO:retrieval:'алгоритмы и структуры данных в языке python' -> 'Алгоритмы и структуры данных в языке Python' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+WARNING:expander:Paraphrase failed: Extra data: line 3 column 1 (char 501)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 0 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.30it/s]
+INFO:reranker:Reranker: 10 -> 6 чанков (top score=4.348)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Общие сведения о дисциплине «Алгоритмы и структуры данных в языке Python»' -> 'экзамен'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=12.2s
+INFO:__main__:[7/24] Какие компетенции формируются по предмету глубокое обучение?
+INFO:pipeline:=== Запрос: Какие компетенции формируются по предмету глубокое обучение?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['глубокое обучение']
+INFO:router:Fuzzy candidates: ['глубокое обучение', 'машинное обучение в семантическом и сетевом анализе']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['глубокое обучение']
+INFO:retrieval:'глубокое обучение' -> 'Глубокое обучение' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:01<00:00,  1.18s/it]
+INFO:reranker:Reranker: 11 -> 6 чанков (top score=4.463)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Общие сведения о дисциплине «Глубокое обучение»' -> 'DL-1, DL-3, DL-4, ML-6'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=13.8s
+INFO:__main__:[8/24] Сколько часов самостоятельной работы выделяется на первые две темы дис
+INFO:pipeline:=== Запрос: Сколько часов самостоятельной работы выделяется на первые две темы дисциплины фундаментальные и генеративные модели?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['фундаментальные и генеративные модели']
+INFO:router:Fuzzy candidates: ['фундаментальные и генеративные модели']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['фундаментальные и генеративные модели']
+INFO:retrieval:'фундаментальные и генеративные модели' -> 'Фундаментальные и генеративные модели' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.35it/s]
+INFO:reranker:Reranker: 7 -> 6 чанков (top score=5.773)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Общие сведения о дисциплине «Фундаментальные и генеративные модели»' -> '58 ч.'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=12.3s
+INFO:__main__:[9/24] Сколько тем имеют по 6 часов семинаров в курсе семантические технологи
+INFO:pipeline:=== Запрос: Сколько тем имеют по 6 часов семинаров в курсе семантические технологии?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['семантические технологии']
+INFO:router:Fuzzy candidates: ['семантические технологии', 'технологии обработки данных']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['семантические технологии']
+INFO:retrieval:'семантические технологии' -> 'Семантические технологии' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+WARNING:expander:Paraphrase failed: Expecting ',' delimiter: line 1 column 302 (char 301)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 0 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  2.19it/s]
+INFO:reranker:Reranker: 6 -> 6 чанков (top score=3.907)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Тематический план дисциплины «Семантические технологии» (8 тем)' -> '0 ч.'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=9.5s
+INFO:__main__:[10/24] Сколько тем в дисциплине технологии обработки данных?
+INFO:pipeline:=== Запрос: Сколько тем в дисциплине технологии обработки данных?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['технологии обработки данных']
+INFO:router:Fuzzy candidates: ['технологии обработки данных', 'технологии обработки больших данных', 'семантические технологии']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['технологии обработки данных']
+INFO:retrieval:'технологии обработки данных' -> 'Технологии обработки данных' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  3.57it/s]
+INFO:reranker:Reranker: 8 -> 6 чанков (top score=3.887)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Общие сведения о дисциплине «Технологии обработки данных»' -> 'Пустая строка'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=10.4s
+INFO:__main__:[11/24] Сколько всего часов самостоятельной работы в дисциплине технологии ана
+INFO:pipeline:=== Запрос: Сколько всего часов самостоятельной работы в дисциплине технологии анализа сетевых моделей?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['технологии анализа сетевых моделей']
+INFO:router:Fuzzy candidates: ['технологии и алгоритмы анализа сетевых моделей']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['технологии и алгоритмы анализа сетевых моделей']
+INFO:retrieval:'технологии и алгоритмы анализа сетевых моделей' -> 'Технологии и алгоритмы анализа сетевых моделей' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  2.93it/s]
+INFO:reranker:Reranker: 10 -> 6 чанков (top score=9.477)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Общие сведения о дисциплине «Технологии и алгоритмы анализа сетевых моделей»' -> '58 ч.'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=10.8s
+INFO:__main__:[12/24] Сколько тем имеют по 6 часов семинаров в курсе машинное обучение в сем
+INFO:pipeline:=== Запрос: Сколько тем имеют по 6 часов семинаров в курсе машинное обучение в семантическом анализе?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['машинное обучение в семантическом анализе']
+INFO:router:Fuzzy candidates: ['машинное обучение в семантическом и сетевом анализе', 'машинное зрение', 'глубокое обучение']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['машинное обучение в семантическом и сетевом анализе']
+INFO:retrieval:'машинное обучение в семантическом и сетевом анализе' -> 'Машинное обучение в семантическом и сетевом анализе' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+WARNING:expander:Paraphrase failed: Expecting ',' delimiter: line 1 column 360 (char 359)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 0 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.23it/s]
+INFO:reranker:Reranker: 10 -> 6 чанков (top score=4.899)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Общие сведения о дисциплине «Машинное обучение в семантическом и сетевом анализе»' -> '0'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=10.9s
+INFO:__main__:[13/24] Имеется ли тема о векторном представлении узлов графа в курсе прикладн
+INFO:pipeline:=== Запрос: Имеется ли тема о векторном представлении узлов графа в курсе прикладные задачи машинного обучения?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['прикладные задачи машинного обучения']
+INFO:router:Fuzzy candidates: ['прикладные задачи машинного обучения']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['прикладные задачи машинного обучения']
+INFO:retrieval:'прикладные задачи машинного обучения' -> 'Прикладные задачи машинного обучения' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.04it/s]
+INFO:reranker:Reranker: 11 -> 6 чанков (top score=-1.034)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Тема 5: Современные исследования в машинном обучении' -> 'Пустая строка'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=17.7s
+INFO:__main__:[14/24] Имеется ли тема о векторном представлении узлов графа в курсе машинное
+INFO:pipeline:=== Запрос: Имеется ли тема о векторном представлении узлов графа в курсе машинное обучение в семантическом анализе?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['машинное обучение в семантическом анализе']
+INFO:router:Fuzzy candidates: ['машинное обучение в семантическом и сетевом анализе', 'машинное зрение', 'глубокое обучение']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_SIMPLE  disciplines=['машинное обучение в семантическом и сетевом анализе']
+INFO:retrieval:'машинное обучение в семантическом и сетевом анализе' -> 'Машинное обучение в семантическом и сетевом анализе' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:01<00:00,  1.25s/it]
+INFO:reranker:Reranker: 11 -> 6 чанков (top score=1.664)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:fact_extractor:FactExtractor: 'Тема 5: Векторное представление (эмбеддинг) узлов графа.' -> 'Да'
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=14.0s
+INFO:__main__:[15/24] Что изучается в курсе Алгоритмы и структуры данных в языке Python?
+INFO:pipeline:=== Запрос: Что изучается в курсе Алгоритмы и структуры данных в языке Python?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['алгоритмы и структуры данных в языке python']
+INFO:router:Fuzzy candidates: ['алгоритмы и структуры данных в языке python']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_GLOBAL  disciplines=['алгоритмы и структуры данных в языке python']
+INFO:retrieval:'алгоритмы и структуры данных в языке python' -> 'Алгоритмы и структуры данных в языке Python' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:01<00:00,  1.16s/it]
+INFO:reranker:Reranker: 13 -> 6 чанков (top score=5.536)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=7149 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 714 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=False  retry=True  note=Ответ НЕ релевантен. Вопрос задан о том, ЧТО ИЗУЧАЕТСЯ в курсе (какие темы, разделы, содержание). Ответ модели представляет простое перечисление заголовков тем из тематического плана, но в контексте есть более подробная информация о содержании некоторых тем (Тема 1, Тема 11, Тема 13, Тема 14), которая в ответе отсутствует. Ответ можно считать поверхностным и неполным. Однако это обусловлено тем, что в предоставленный контекст не попали детальные описания всех 16 тем, а только заголовки плана и развернутые описания для 4 тем. В корпусе, вероятно, есть описания остальных тем. Следовательно, данные в корпусе ЕСТЬ, но для формирования полного ответа использован недостаточный контекст.
+INFO:pipeline:Retry поиска (попытка 1/1) ...
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:01<00:00,  1.15s/it]
+INFO:reranker:Reranker: 13 -> 6 чанков (top score=5.536)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=7149 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 779 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=False  retry=False  note=Ответ содержит галлюцинации. В контексте указаны названия тем 1-16, но НЕ указано конкретное содержание тем 7, 8, 14, 15, 16 (кроме названий). Ответ модели добавляет детали, которые отсутствуют в контексте: например, 'динамические массивы' упомянуты только в теме 13; содержание тем 14 (алгоритмы поиска и сортировки) не раскрыто в контексте; 'деревья' и 'хеш-таблицы' только в названиях тем 15 и 16 без содержания. Также модель добавляет 'простые (обменные, выбором, вставками) и эффективные (быстрая, Шелла, слиянием) методы сортировки', что является галлюцинацией, так как этого нет в контексте.
+INFO:pipeline:Single fallback: полный документ 'Алгоритмы и структуры данных в языке Python'
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/scroll "HTTP/1.1 200 OK"
+INFO:retrieval:Full document 'Алгоритмы и структуры данных в языке Python': 30 блоков
+INFO:generation:Generation (fallback): контекст=14000 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 1034 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=False  retry=False  note=В ответе содержатся фактические неточности (галлюцинации), не подтверждённые контекстом. А именно: 1) Упомянуты "специальные методы" в разделе про ООП - этой информации нет в контексте. 2) В разделе функционального программирования указаны "функции map, filter, reduce, модуль itertools" - этих элементов нет в контексте. 3) В разделе структур данных указаны "бинарные деревья и двоичные деревья поиска" - в контексте упомянуты только "деревья" без детализации. Контекст не содержит этих конкретных деталей.
+INFO:pipeline:Single fallback: valid=False
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=82.3s
+INFO:__main__:[16/24] Какие инструменты и методы применяются в математическом и имитационном
+INFO:pipeline:=== Запрос: Какие инструменты и методы применяются в математическом и имитационном моделировании?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['математическом и имитационном моделировании']
+INFO:router:Fuzzy candidates: []
+INFO:router:Not found names: ['математическом и имитационном моделировании']
+INFO:router:Router: type=QueryType.CLARIFY  disciplines=[]
+INFO:__main__:  → router=✗ F=nan R=nan C=nan t=1.4s
+INFO:__main__:[17/24] Какие вопросы для подготовки к экзамену после 1 семестра по курсу алго
+INFO:pipeline:=== Запрос: Какие вопросы для подготовки к экзамену после 1 семестра по курсу алгоритмы и структура данных в питоне?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['алгоритмы и структура данных в питоне']
+INFO:router:Fuzzy candidates: ['алгоритмы и структуры данных в языке python']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_GLOBAL  disciplines=['алгоритмы и структуры данных в языке python']
+INFO:retrieval:'алгоритмы и структуры данных в языке python' -> 'Алгоритмы и структуры данных в языке Python' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.01it/s]
+INFO:reranker:Reranker: 12 -> 6 чанков (top score=0.375)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=14000 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 2898 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=True  retry=False  note=Ответ релевантен вопросу, точно и полно воспроизводит перечень вопросов для 1 семестра из контекста (все темы с 1 по 6), без галлюцинаций. Ответ представляет собой синтез данных (multi.global), структурированный по темам, как в исходном документе.
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=44.5s
+INFO:__main__:[18/24] Какие примерные вопросы для подготовки к контрольной работе по предмет
+INFO:pipeline:=== Запрос: Какие примерные вопросы для подготовки к контрольной работе по предмету алгоритмы и структура данных в Python для 1 семестра?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['алгоритмы и структура данных в python']
+INFO:router:Fuzzy candidates: ['алгоритмы и структуры данных в языке python']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_GLOBAL  disciplines=['алгоритмы и структуры данных в языке python']
+INFO:retrieval:'алгоритмы и структуры данных в языке python' -> 'Алгоритмы и структуры данных в языке Python' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+WARNING:expander:Paraphrase failed: Extra data: line 3 column 1 (char 535)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 0 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.07it/s]
+INFO:reranker:Reranker: 11 -> 6 чанков (top score=4.798)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=14000 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 1677 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=False  retry=True  note=Ответ не релевантен. В контексте явно указаны "Примерные вопросы для подготовки к экзамену в 1 семестре", структурированные по темам (Тема 1. Введение..., Тема 2. Управляющие конструкции... и т.д.). Ответ же модели представляет собой неструктурированный список из 34 пунктов, который не совпадает с приведённым в контексте перечнем вопросов по темам. Большинство пунктов в ответе модели (например, пункты 1-4, 19-34) либо отсутствуют в предоставленном контексте, либо сформулированы совершенно иначе. Это означает, что использованный контекст не содержит полных данных для ответа на вопрос, и поиск нужно повторить, чтобы найти конкретный раздел с вопросами для 1 семестра.
+INFO:pipeline:Retry поиска (попытка 1/1) ...
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.10it/s]
+INFO:reranker:Reranker: 11 -> 6 чанков (top score=4.798)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=14000 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 1569 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=False  retry=False  note=Ответ не является релевантным. В контексте явно указаны 'Примерные вопросы для подготовки к экзамену в 1 семестре' по конкретным темам (с 1 по 5, включая работу с файлами и модулями). Ответ модели же содержит общий список из 34 вопросов, которые либо не совпадают с вопросами из контекста, либо являются их сильно упрощенными/обобщенными версиями. Большинство конкретных вопросов из контекста (например, про присвоение по ссылке и значению, цикл for и range/enumerate, операции со словарями с учетом отсутствия ключа, распаковку кортежей, инструкцию with...as) в ответе отсутствуют. Фактически, модель сгенерировала свой собственный список, а не использовала предоставленные данные, что является грубой галлюцинацией и нарушением критерия фактической точности.
+INFO:pipeline:Single fallback: полный документ 'Алгоритмы и структуры данных в языке Python'
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/scroll "HTTP/1.1 200 OK"
+INFO:retrieval:Full document 'Алгоритмы и структуры данных в языке Python': 30 блоков
+INFO:generation:Generation (fallback): контекст=14000 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 93 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=False  retry=True  note=Ответ нерелевантен и недостаточен. В контексте приведены общие сведения о программе, тематический план и детальное описание некоторых тем. Однако в предоставленных фрагментах контекста отсутствуют блоки, посвящённые примерам вопросов к контрольным работам. Данные для ответа, вероятно, есть в корпусе (например, в разделах «Текущий контроль» или «Вопросы для самопроверки» других тем), но в текущий контекст эти блоки не попали.
+INFO:pipeline:Single fallback: valid=False
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=78.3s
+INFO:__main__:[19/24] Какие дополнительные учебные материалы и интернет-ресурсы рекомендуетс
+INFO:pipeline:=== Запрос: Какие дополнительные учебные материалы и интернет-ресурсы рекомендуется использовать для успешного освоения дисциплины технологии обработки данных?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['технологии обработки данных']
+INFO:router:Fuzzy candidates: ['технологии обработки данных', 'технологии обработки больших данных', 'семантические технологии']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_GLOBAL  disciplines=['технологии обработки данных']
+INFO:retrieval:'технологии обработки данных' -> 'Технологии обработки данных' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +2 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.14it/s]
+INFO:reranker:Reranker: 10 -> 6 чанков (top score=-2.012)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=4661 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 1699 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=True  retry=False  note=Ответ полностью релевантен вопросу, перечисляет все интернет-ресурсы, указанные в контексте, без добавления галлюцинаций. Также упомянута общая рекомендация из методических указаний работать с интернет-источниками. Ответ полный, так как перечислены все рекомендованные в контексте материалы.
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=34.7s
+INFO:__main__:[20/24] Перечисли все основные темы для изучения по курсу технологии обработки
+INFO:pipeline:=== Запрос: Перечисли все основные темы для изучения по курсу технологии обработки данных
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['технологии обработки данных']
+INFO:router:Fuzzy candidates: ['технологии обработки данных', 'технологии обработки больших данных', 'семантические технологии']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_GLOBAL  disciplines=['технологии обработки данных']
+INFO:retrieval:'технологии обработки данных' -> 'Технологии обработки данных' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +2 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.00it/s]
+INFO:reranker:Reranker: 12 -> 6 чанков (top score=2.537)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=7429 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 503 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=True  retry=False  note=Ответ полностью соответствует контексту. Все семь тем из тематического плана дисциплины перечислены точно, без добавлений или искажений. Ответ релевантен вопросу, фактологически точен и полон.
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=24.8s
+INFO:__main__:[21/24] Какие вопросы выносятся на самостоятельное изучение по дисциплине обра
+INFO:pipeline:=== Запрос: Какие вопросы выносятся на самостоятельное изучение по дисциплине обработки данных?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['обработки данных']
+INFO:router:Fuzzy candidates: ['технологии обработки данных', 'технологии обработки больших данных']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_GLOBAL  disciplines=['технологии обработки данных']
+INFO:retrieval:'технологии обработки данных' -> 'Технологии обработки данных' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:01<00:00,  1.01s/it]
+INFO:reranker:Reranker: 12 -> 6 чанков (top score=-0.511)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=9820 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 464 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=False  retry=True  note=Ответ неполный. В контексте представлены темы 3, 4 и 5, но для темы 3 содержимое обрезано (текст обрывается на 'Взаимо'). Поэтому невозможно проверить полный перечень вопросов для самостоятельного изучения по теме 3. Ответ содержит конкретные пункты из тем 4 и 5, которые соответствуют контексту ('Построение трехмерных графиков', 'Продвинутая работа с цветовыми картами', 'Использования хэширования при работе со строками. Строки в библиотеке numpy.'). Однако из-за неполного контекста по теме 3 ответ не может быть признан полным и достоверным. Необходимо повторить запрос, чтобы получить полный текст темы 3.
+INFO:pipeline:Retry поиска (попытка 1/1) ...
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:01<00:00,  1.27s/it]
+INFO:reranker:Reranker: 12 -> 6 чанков (top score=-0.511)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=9820 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 500 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=True  retry=False  note=Ответ релевантен, факты о темах 4 и 5 полностью соответствуют контексту. Для темы 3 ответ даёт уточнение (XLWings), которого нет в предоставленном контексте, но основан на логическом продолжении её описания (взаимодействие с Excel). Ответ покрывает запрошенные темы, структурирован.
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=41.9s
+INFO:__main__:[22/24] Какие основные вопросы включены в перечень подготовки к экзамену по ку
+INFO:pipeline:=== Запрос: Какие основные вопросы включены в перечень подготовки к экзамену по курсу технологии обработки данных?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['технологии обработки данных']
+INFO:router:Fuzzy candidates: ['технологии обработки данных', 'технологии обработки больших данных', 'семантические технологии']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_GLOBAL  disciplines=['технологии обработки данных']
+INFO:retrieval:'технологии обработки данных' -> 'Технологии обработки данных' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:01<00:00,  1.27s/it]
+INFO:reranker:Reranker: 14 -> 6 чанков (top score=1.411)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=8644 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 2315 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=True  retry=False  note=Ответ полностью релевантен вопросу, точно воспроизводит данные из контекста (список вопросов для подготовки к экзамену из раздела «Фонд оценочных средств») и является полным.
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=40.9s
+INFO:__main__:[23/24] Какие основные вопросы включаются в перечень подготовки к контрольной 
+INFO:pipeline:=== Запрос: Какие основные вопросы включаются в перечень подготовки к контрольной работе по дисциплине «Глубокое обучение»?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['глубокое обучение']
+INFO:router:Fuzzy candidates: ['глубокое обучение', 'машинное обучение в семантическом и сетевом анализе']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_GLOBAL  disciplines=['глубокое обучение']
+INFO:retrieval:'глубокое обучение' -> 'Глубокое обучение' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:01<00:00,  1.19s/it]
+INFO:reranker:Reranker: 13 -> 6 чанков (top score=5.270)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=13881 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 1931 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=True  retry=False  note=Ответ является релевантным и полностью соответствует контексту. Он предоставляет точный и полный перечень всех примерных вопросов и заданий для подготовки к контрольной работе, как указано в предоставленном контексте. Все факты (вопросы) взяты непосредственно из раздела 6.2. Замечаний нет.
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=40.1s
+INFO:__main__:[24/24] Какие результаты обучения будут после курса семантических технологий?
+INFO:pipeline:=== Запрос: Какие результаты обучения будут после курса семантических технологий?
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Extracted names from query: ['семантические технологии']
+INFO:router:Fuzzy candidates: ['семантические технологии', 'технологии обработки данных']
+INFO:router:Not found names: []
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:LLM extraction status: found
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:router:Router: type=QueryType.SINGLE_GLOBAL  disciplines=['семантические технологии']
+INFO:retrieval:'семантические технологии' -> 'Семантические технологии' (1.00)
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:expander:Expander: 3 перефразировок, 0 подзапросов, HyDE=True
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.18it/s]
+INFO:reranker:Reranker: 8 -> 6 чанков (top score=0.305)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=10929 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 149 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=False  retry=True  note=Ответ релевантен (отвечает на вопрос о результатах обучения), но контекст содержит только методические указания и вопросы к аттестации, без раздела с планируемыми результатами обучения. В контексте упоминается, что перечень компетенций содержится в разделе 2, но этот раздел не был предоставлен в контексте. Данные в корпусе, вероятно, есть, но в контекст не попали.
+INFO:pipeline:Retry поиска (попытка 1/1) ...
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/query "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points "HTTP/1.1 200 OK"
+INFO:retrieval:Parent retrieval: +1 родительских блоков
+Batches: 100%|████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.57it/s]
+INFO:reranker:Reranker: 8 -> 6 чанков (top score=0.305)
+INFO:generation:Generation: тип=QueryType.SINGLE_GLOBAL, контекст=10929 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 189 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=False  retry=True  note=Ответ нерелевантен. Пользователь спрашивает о результатах обучения (требуется список компетенций или навыков), а ответ модели констатирует отсутствие этой информации в контексте. Критерии 1 (релевантность) и 3 (полнота) не выполнены. Вопрос является single.global — требует синтеза данных. Упомянутый в контексте раздел 2 ('Перечень планируемых результатов...') не раскрыт, поэтому нужны другие параметры поиска, чтобы получить соответствующие блоки с формулировками результатов обучения.
+INFO:pipeline:Single fallback: полный документ 'Семантические технологии'
+INFO:httpx:HTTP Request: POST http://localhost:6333/collections/discipline_chunks/points/scroll "HTTP/1.1 200 OK"
+INFO:retrieval:Full document 'Семантические технологии': 21 блоков
+INFO:generation:Generation (fallback): контекст=14000 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:generation:Generation: ответ 813 симв.
+INFO:httpx:HTTP Request: POST https://rus-gpt.com/api/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:verification:Verification [deepseek/deepseek-v3.2]: valid=False  retry=True  note=Ответ нерелевантен и содержит галлюцинации. Вопрос спрашивает о результатах обучения после курса. В предоставленном контексте таких данных (знать/уметь/владеть для каждой компетенции) нет. Ответ модели сконструировал подробные, но полностью вымышленные формулировки для ML-3 и утверждает, что данных для DL-4 нет, хотя в контексте нет таких детализированных результатов обучения ни для одной из компетенций. Данные для ответа должны быть где-то в корпусе (скорее всего, в разделе 'Результаты обучения' или 'Формируемые компетенции' рабочей программы), но в данный контекст они не попали.
+INFO:pipeline:Single fallback: valid=False
+INFO:__main__:  → router=✓ F=nan R=nan C=nan t=57.2s
+
+════════════════════════════════════════════════════════════
+  ИТОГИ ОЦЕНКИ RAG-СИСТЕМЫ
+════════════════════════════════════════════════════════════
+  Примеров:              24
+  Модель-судья:          qwen/qwen3.5-397b-a17b
+
+  Router Accuracy:       0.958
+
+  Метрика             mean   std
+  ────────────────────────────────────
+  Faithfulness        0.00   ±0.00
+  Answer Relevancy    0.00   ±0.00
+  Answer Correctness  0.00   ±0.00
+  Response Time       25.59s  ±22.24s
+
+  Низкое качество (≤2 по любой метрике): 0/24
+
+  По типам запросов:
+  Тип                     N      F      R      C   Router
+  ───────────────────────────────────────────────────────
+  single.simple          14   0.00   0.00   0.00    1.000
+  single.global          10   0.00   0.00   0.00    0.900
+════════════════════════════════════════════════════════════
+
+INFO:__main__:Результаты сохранены: datasets/single_ds_eval.json

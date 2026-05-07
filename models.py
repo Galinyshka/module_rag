@@ -27,8 +27,17 @@ class ExpandedQuery:
     sub_queries: list[str]
     disciplines: list[str]
     query_type:  QueryType
-    hyde_text:   str = ""    # гипотетический ответ для HyDE (single.simple)
+    hyde_text:   str = ""    
 
+@dataclass
+class ExpandedQuery:
+    original: str
+    paraphrases: list[str]
+    sub_queries: list[str]
+    disciplines: list[str]
+    query_type: QueryType
+    hyde_text: str
+    sub_queries_expanded: list[dict[str, Any]] = field(default_factory=list)
 
 @dataclass
 class RetrievedChunk:
@@ -60,19 +69,3 @@ class RAGResponse:
     clarification_candidates: list[str] = field(default_factory=list)
     disciplines:              list[str] = field(default_factory=list)
 
-    # ---------------------------------------------------------------------------
-# ПРИМЕЧАНИЕ: что нужно проверить в смежных модулях
-# ---------------------------------------------------------------------------
-# 1. models.py / RAGResponse
-#    Evaluator читает response.disciplines для получения дисциплин от роутера.
-#    Убедитесь, что RAGResponse содержит это поле, например:
-#
-#      @dataclass
-#      class RAGResponse:
-#          answer:      str
-#          query_type:  QueryType
-#          disciplines: list[str]      # ← нужно добавить, если ещё нет
-#          chunks_used: list[Chunk]
-#
-#    В pipeline.py при построении RAGResponse передавайте:
-#      disciplines = route_result.disciplines
