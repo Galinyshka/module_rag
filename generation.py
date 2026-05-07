@@ -6,7 +6,7 @@ from models import ExpandedQuery, RetrievedChunk
 from prompts import GENERATE_PROMPTS
 
 log = logging.getLogger(__name__)
-MAX_CONTEXT_CHARS = 14_000
+MAX_CONTEXT_CHARS = 50_000
 
 
 def build_context(chunks: list[RetrievedChunk]) -> str:

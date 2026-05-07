@@ -59,6 +59,7 @@ def _parse_json(text: str) -> dict:
         raise
 
 class QueryExpander:
+    """Расширяет запрос с помощью LLM: перефразировки, декомпозиция, HyDE."""
     def __init__(self) -> None:
         self._client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
 
@@ -77,6 +78,7 @@ class QueryExpander:
             sub_queries_expanded = []
             for sub_q in sub_queries:
                 paraphrases = self._paraphrase(sub_q)
+                # результат сохраняем в виде списка словарей с оригиналом и перефразировками
                 sub_queries_expanded.append({
                     "original": sub_q,
                     "paraphrases": paraphrases
@@ -108,13 +110,15 @@ class QueryExpander:
             log.info(
                 "Expander:\n"
                 "  paraphrases (%d): %r\n"
-                "  sub_queries: %d\n"
-                "  hyde: %s",
+                "  sub_queries: (%d): %r\n"
+                "  hyde_text (%d): %r\n",
                 len(paraphrases),
                 paraphrases,
                 len(sub_queries),
-                bool(hyde_text)
-            )
+                sub_queries,
+                bool(hyde_text),
+                hyde_text
+                )
 
         return ExpandedQuery(
             original=query,
@@ -122,7 +126,6 @@ class QueryExpander:
             sub_queries=sub_queries,
             disciplines=resolved_disciplines,
             query_type=route.query_type,
-            hyde_text=hyde_text,
             sub_queries_expanded=sub_queries_expanded,  
         )
     

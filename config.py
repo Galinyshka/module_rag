@@ -75,7 +75,7 @@ FUZZY_TOP_K     = 5    # максимум кандидатов, передава
 # ---------------------------------------------------------------------------
 # Multilingual cross-encoder, поддерживает русский язык
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
-RERANKER_TOP_K = int(os.getenv("RERANKER_TOP_K", "6"))
+RERANKER_TOP_K = "15"
 RERANKER_TOP_K_BALANCE = int(os.getenv("RERANKER_TOP_K_BALANCE", "8"))
 
 

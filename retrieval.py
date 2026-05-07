@@ -254,7 +254,7 @@ class RetrievalModule:
     def _queries(self, expanded: ExpandedQuery) -> list[str]:
         queries = [expanded.original, *expanded.paraphrases]
         if expanded.hyde_text:
-            queries.insert(1, expanded.hyde_text)
+            queries.append(expanded.hyde_text)
         queries.extend(expanded.sub_queries)
         return queries
 

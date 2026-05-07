@@ -36,7 +36,7 @@ class ExpandedQuery:
     sub_queries: list[str]
     disciplines: list[str]
     query_type: QueryType
-    hyde_text: str
+    hyde_text: str = ""
     sub_queries_expanded: list[dict[str, Any]] = field(default_factory=list)
 
 @dataclass

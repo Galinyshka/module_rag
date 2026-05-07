@@ -18,7 +18,7 @@ from models import RetrievedChunk
 
 log = logging.getLogger(__name__)
 
-
+RERANKER_TOP_K = 12
 class Reranker:
     def __init__(self) -> None:
         log.info("Загрузка cross-encoder: %s ...", RERANKER_MODEL)
