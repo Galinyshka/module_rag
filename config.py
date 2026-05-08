@@ -24,20 +24,20 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 # LLM
 # ---------------------------------------------------------------------------
-LLM_BASE_URL     = os.getenv("LLM_BASE_URL",     "https://api.openai.com/v1")
+LLM_BASE_URL     = os.getenv("LLM_BASE_URL",     "https://rus-gpt.com/api/v1")
 LLM_API_KEY      = os.getenv("LLM_API_KEY",      "")
 
-LLM_MODEL_FAST   = os.getenv("LLM_MODEL_FAST",   "qwen3-30b-a3b-instruct-2507")
-LLM_MODEL_VERIFY = os.getenv("LLM_MODEL_VERIFY", "deepseek-v3.2")
-LLM_MODEL_MAIN   = os.getenv("LLM_MODEL_MAIN",   "deepseek-v3.2")
-LLM_MODEL_IDX    = os.getenv("LLM_MODEL_IDX",    "deepseek-v3.2")
+LLM_MODEL_FAST   = os.getenv("LLM_MODEL_FAST",   "qwen/qwen3-30b-a3b-instruct-2507")
+LLM_MODEL_VERIFY = os.getenv("LLM_MODEL_VERIFY", "deepseek/deepseek-v3.2")
+LLM_MODEL_MAIN   = os.getenv("LLM_MODEL_MAIN",   "deepseek/deepseek-v3.2")
+LLM_MODEL_IDX    = os.getenv("LLM_MODEL_IDX",    "deepseek/deepseek-v3.2")
 # Модель-судья для оценки качества — должна отличаться от generation-модели
 # Рекомендуется: gpt-4o, claude-sonnet-4.5, qwen3.5-397b-a17b
 LLM_MODEL_EVAL   = os.getenv("LLM_MODEL_EVAL",   "qwen/qwen3.5-397b-a17b")
 
 LLM_MAX_TOKENS_FAST   = 300
 LLM_MAX_TOKENS_VERIFY = 400
-LLM_MAX_TOKENS_MAIN   = 1200
+LLM_MAX_TOKENS_MAIN   = 10000
 LLM_MAX_TOKENS_IDX    = 400
 LLM_MAX_TOKENS_HYDE   = 200
 LLM_MAX_TOKENS_EVAL   = 300   # оценка по одной метрике: score + rationale
@@ -87,6 +87,11 @@ else:
 PARAPHRASES_COUNT = 3 # Количество перефразировок запроса
 
 # ---------------------------------------------------------------------------
+# Retrieval
+# ---------------------------------------------------------------------------
+TOP_K_SINGLE          = 3 # сколько чанков брать для single запросов
+
+# ---------------------------------------------------------------------------
 # Reranker
 # ---------------------------------------------------------------------------
 # Multilingual cross-encoder, поддерживает русский язык
@@ -94,7 +99,7 @@ RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12
 RERANKER_TOP_K = 15 # сколько чанков оставить после реранкинга
 RERANKER_TOP_K_BALANCE = 5 # для multi запросов с балансировкой: сколько чанков оставить после реранкинга, гарантируя представительство каждой дисциплины (если хватает релевантных кандидатов)
 
-TOP_K_SINGLE          = 6 # сколько чанков брать для single запросов
+
 TOP_K_STAGE1          = 30 # сколько чанков брать на первом этапе для multi запросов, до реранкинга
 TOP_K_PER_DISC        = 8 # для multi запросов: сколько чанков брать с каждой дисциплины, до реранкинга
 MAX_DISCIPLINES_MULTI = 10  # для multi запросов: максимальное количество дисциплин, которые будут представлены в результатах (по количеству релевантных чанков)    

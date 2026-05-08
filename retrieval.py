@@ -1,7 +1,5 @@
 from __future__ import annotations
 import logging
-import re
-from difflib import SequenceMatcher
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -25,13 +23,6 @@ from config import (
 
 log = logging.getLogger(__name__)
 
-def _normalize(s: str) -> str:
-    return re.sub(r"\s+", " ", s.strip().lower())
-
-def _sim(a: str, b: str) -> float:
-    return SequenceMatcher(None, _normalize(a), _normalize(b)).ratio()
-
-
 class RetrievalModule:
     def __init__(
         self,
@@ -45,12 +36,10 @@ class RetrievalModule:
         self._qdrant     = QdrantClient(url=qdrant_url)
         self._collection = collection
 
-    # ------------------------------------------------------------------
-    # Public
-    # ------------------------------------------------------------------
-
     def retrieve(self, expanded: ExpandedQuery, reranker=None) -> list[RetrievedChunk]:
+        '''Каждый тип запроса требует своей стратегии поиска и реранкинга.'''
         query_type = expanded.query_type
+
         if query_type == QueryType.MULTI_GLOBAL:
             chunks = self._retrieve_multi_global(expanded)
         elif query_type == QueryType.MULTI_RELATION:
@@ -76,18 +65,18 @@ class RetrievalModule:
         return chunks
 
 
-    # ------------------------------------------------------------------
-    # Стратегии
-    # ------------------------------------------------------------------
 
     def _retrieve_single(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
-        return self._multi_query_rrf(
-            self._queries(expanded),
-            self._discipline_filter(expanded.disciplines),
-            TOP_K_SINGLE,
+        '''Для single запросов: один запрос → RRF → реранк по всему корпусу.'''
+        chunks = self._multi_query_rrf(
+            queries=self._queries(expanded),
+            qdrant_filter=self._discipline_filter(expanded.disciplines),
+            top_k=TOP_K_SINGLE,
         )
+        return chunks
 
-    def _retrieve_multi_relation(self, expanded: ExpandedQuery, reranker) -> list[RetrievedChunk]:
+    
+    '''def _retrieve_multi_relation(self, expanded: ExpandedQuery, reranker) -> list[RetrievedChunk]:
         if not expanded.disciplines:
             return []
 
@@ -174,16 +163,9 @@ class RetrievalModule:
     # ------------------------------------------------------------------
     # Parent retrieval
     # ------------------------------------------------------------------
-
+    '''
     def _enrich_with_parents(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
-        """
-        Подтягивает родительские блоки и всех их детей (siblings).
-        
-        Логика:
-          1. Найти все parent_id у текущих чанков
-          2. Подтянуть сами родители
-          3. Подтянуть всех детей каждого родителя
-        """
+        """ Подтягивает родительские блоки и всех их детей"""
         existing_ids = {c.block_id for c in chunks}
         
         # Шаг 1: Собираем уникальные parent_id
@@ -266,24 +248,22 @@ class RetrievalModule:
             unique.append(c)
 
         return unique
-
+    
     # ------------------------------------------------------------------
     # RRF поиск
     # ------------------------------------------------------------------
 
     def _queries(self, expanded: ExpandedQuery) -> list[str]:
+        '''Объединяет все варианты запросов в один список для RRF.'''
+        
         queries = [expanded.original, *expanded.paraphrases]
         if expanded.hyde_text:
             queries.append(expanded.hyde_text)
         queries.extend(expanded.sub_queries)
+        log.info("Number of queries for retrieval: %d", len(queries))
         return queries
 
-    def _multi_query_rrf(
-        self,
-        queries:      list[str],
-        qdrant_filter,
-        top_k:        int,
-    ) -> list[RetrievedChunk]:
+    def _multi_query_rrf(self, queries: list[str], qdrant_filter, top_k: int) -> list[RetrievedChunk]:
         """
         RRF по нескольким запросам.
 
@@ -300,30 +280,35 @@ class RetrievalModule:
         seen:   dict[str, RetrievedChunk] = {}
         scores: dict[str, float]          = {}
 
-        for q in unique:
-            vec = self._embed_cached(q)
-            for c in self._rrf_search(vec, qdrant_filter, top_k):
-                if c.block_id not in seen:
-                    seen[c.block_id]   = c
-                    scores[c.block_id] = c.score
+        for query in unique:
+            log.info("RRF search: query=%s", query)
+            # берем эмбединг запроса из кеша
+            query_vec = self._embed_cached(query)
+            for chunk in self._rrf_search(query_vec, qdrant_filter, top_k):
+                if chunk.block_id not in seen:
+                    seen[chunk.block_id]   = chunk
+                    scores[chunk.block_id] = chunk.score
                 else:
-                    scores[c.block_id] = max(scores[c.block_id], c.score)
-        result = self._sort_by_score(seen, scores)[:top_k * 3]
-        
-        if result:
-            sc = [scores[c.block_id] for c in result]
-            log.info("  RRF scores (%d chunks): min=%.3f max=%.3f avg=%.3f",
-                    len(result), min(sc), max(sc), sum(sc)/len(sc))
-        
-        return result
-        #return self._sort_by_score(seen, scores)[:top_k * 3]
+                    scores[chunk.block_id] = max(scores[chunk.block_id], chunk.score)
 
-    def _rrf_search(
-        self,
-        vec:          list[float],
-        qdrant_filter,
-        top_k:        int,
-    ) -> list[RetrievedChunk]:
+                log.info("Chunk from RRF: id=%s, score=%.3f, discipline=%s, block=%s",
+                        chunk.block_id, chunk.score, chunk.discipline, chunk.block_name)
+        
+        chunks = self._sort_by_score(seen, scores)
+        log.info('RRF search: найдено %d уникальных чанков', len(chunks))
+
+        chunks = chunks[:top_k * len(unique)]
+        log.info('RRF search: после обрезки до top_k*кол-во_запросов (%d) чанков', len(chunks))
+        
+        if chunks:
+            sc = [scores[chunk.block_id] for chunk in chunks]
+            log.info("  RRF scores (%d chunks): min=%.3f max=%.3f avg=%.3f",
+                    len(chunks), min(sc), max(sc), sum(sc)/len(sc))
+        
+        return chunks
+
+
+    def _rrf_search(self, query_vec: list[float], qdrant_filter, top_k: int) -> list[RetrievedChunk]:
         """
         Один RRF-запрос в Qdrant:
           prefetch questions_vec → prefetch summary_vec → Fusion.RRF → top_k.
@@ -337,13 +322,13 @@ class RetrievalModule:
                 collection_name = self._collection,
                 prefetch        = [
                     Prefetch(
-                        query        = vec,
+                        query        = query_vec,
                         using        = VEC_QUESTIONS,
                         filter       = qdrant_filter,
                         limit        = RRF_PREFETCH_K,
                     ),
                     Prefetch(
-                        query        = vec,
+                        query        = query_vec,
                         using        = VEC_SUMMARY,
                         filter       = qdrant_filter,
                         limit        = RRF_PREFETCH_K,
@@ -353,29 +338,12 @@ class RetrievalModule:
                 limit           = top_k,
                 with_payload    = True,
             )
-            return [self._point_to_chunk(h, h.score) for h in result.points]
+            chunks = [self._point_to_chunk(h, h.score) for h in result.points]
+            return chunks
+        
         except Exception as exc:
-            # Fallback на старый поиск если версия qdrant-client не поддерживает RRF
-            log.warning("RRF недоступен (%s), fallback на summary_vec", exc)
-            return self._vector_search(vec, VEC_SUMMARY, qdrant_filter, top_k)
+            log.exception("RRF недоступен (%s)", exc)
 
-    def _vector_search(
-        self,
-        vec:          list[float],
-        vector_name:  str,
-        qdrant_filter,
-        top_k:        int,
-    ) -> list[RetrievedChunk]:
-        """Fallback: простой поиск по одному вектору."""
-        result = self._qdrant.query_points(
-            collection_name = self._collection,
-            query           = vec,
-            using           = vector_name,
-            query_filter    = qdrant_filter,
-            limit           = top_k,
-            with_payload    = True,
-        )
-        return [self._point_to_chunk(h, h.score) for h in result.points]
 
     # ------------------------------------------------------------------
     # Кэш эмбедингов
@@ -399,14 +367,12 @@ class RetrievalModule:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _sort_by_score(
-        self,
-        chunks: dict[str, RetrievedChunk],
-        scores: dict[str, float],
-    ) -> list[RetrievedChunk]:
+    def _sort_by_score(self, chunks: dict[str, RetrievedChunk], scores: dict[str, float]) -> list[RetrievedChunk]:
+        ''''Сортирует чанки по score, который может быть в двух местах: либо в поле chunk.score (для RRF), либо в отдельном словаре (для реранкера).'''
         ranked = sorted(chunks.values(), key=lambda c: scores[c.block_id], reverse=True)
         for c in ranked:
             c.score = scores[c.block_id]
+        # возвращаем отсортированные по убыванию чанки 
         return ranked
 
     def _point_to_chunk(self, point, score: float) -> RetrievedChunk:

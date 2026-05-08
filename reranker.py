@@ -43,30 +43,30 @@ class Reranker:
             reverse = True,
         )
 
-        result = []
+        reranked_chunks = []
         for chunk, score in ranked[:RERANKER_TOP_K]:
             chunk.score = float(score)   # заменяем косинусный score на reranker score
             if score > -2:  # фильтр по минимальному порогу (можно настроить)
-                result.append(chunk)
+                reranked_chunks.append(chunk)
 
         log.info("Reranker: %d -> %d чанков (top score=%.3f)",
-                 len(chunks), len(result), result[0].score if result else 0)
+                 len(chunks), len(reranked_chunks), reranked_chunks[0].score if reranked_chunks else 0)
         log.info("Chunks after rerank:\n%s",
          "\n\n".join(
              f"  [{i+1}] {c.score:+.2f} | {c.discipline} | {c.block_name}\n  {c.text[:200]}"
-             for i, c in enumerate(result)
+             for i, c in enumerate(reranked_chunks)
          ))
-        if result:
-            sc = [c.score for c in result]
+        
+        if reranked_chunks:
+            sc = [c.score for c in reranked_chunks]
             log.info("Reranker scores: min=%.3f max=%.3f avg=%.3f | distribution: %s",
                      min(sc), max(sc), sum(sc)/len(sc),
                      " ".join(f"{s:.2f}" for s in sc))
-        retriever = RetrievalModule()
 
-        result = retriever._enrich_with_parents(result)
-        log.info("    After parent enrichment: %d чанков",
-                        len(result))
-        return result
+
+        return reranked_chunks
+
+
 
     def rerank_with_balance(self, query: str, chunks: list[RetrievedChunk],
                        disciplines: list[str] = None) -> list[RetrievedChunk]:

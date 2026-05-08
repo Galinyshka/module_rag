@@ -1,28 +1,9 @@
-"""
-RAG-пайплайн: оркестратор всех модулей.
-
-Полная цепочка:
-  Router
-    → QueryExpander          (перефразировки + HyDE + декомпозиция)
-    → RetrievalModule        (стратегия по типу + parent retrieval + кэш эмбедингов)
-    → Reranker               (cross-encoder переранжирование)
-    → FactExtractor          (прямое извлечение для single.simple — если находит)
-    → GenerationModule       (если FactExtractor не сработал)
-    → VerificationModule
-    → RAGResponse
-
-Fallback для single-запросов:
-  Если верификатор отклонил и запрос single — загружаем полный документ,
-  регенерируем по расширенному контексту.
-"""
 from __future__ import annotations
-
 import logging
-
 from expander      import QueryExpander
 from fact_extractor import FactExtractor
 from generation    import GenerationModule, build_context
-from models        import QueryType, RAGResponse, VerificationResult
+from models        import QueryType, RAGResponse, RetrievedChunk, VerificationResult
 from reranker      import Reranker
 from retrieval    import RetrievalModule
 from router        import Router
@@ -39,15 +20,6 @@ SINGLE_TYPES = {QueryType.SINGLE_SIMPLE, QueryType.SINGLE_GLOBAL}
 
 
 class RAGPipeline:
-    """
-    Полный RAG-пайплайн для корпуса рабочих программ дисциплин.
-
-    Пример:
-        pipeline = RAGPipeline()
-        response = pipeline.ask("Сколько часов лекций в дисциплине по Python?")
-        print(response.answer)
-        print(response.fact_extracted)   # True если ответ взят напрямую из блока
-    """
 
     def __init__(
         self,
@@ -64,25 +36,21 @@ class RAGPipeline:
         self._verification  = VerificationModule()
         log.info("Пайплайн готов.")
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def ask(self, query: str) -> RAGResponse:
         log.info("=== Запрос: %s", query)
 
-        # 1. Маршрутизация
+
         route = self._router.route(query)
 
         if route.query_type == QueryType.CLARIFY:
             return RAGResponse(
-                answer                   = route.message,  # текст вопроса от LLM
+                answer                   = route.message, 
                 query_type               = route.query_type,
                 is_verified              = True,
                 chunks_used              = [],
                 fact_extracted           = False,
                 verification_note        = "clarification required",
-                clarification_candidates = route.disciplines,  # кандидаты для выбора
+                clarification_candidates = route.disciplines,  
                 disciplines = route.disciplines
             )
 
@@ -108,9 +76,9 @@ class RAGPipeline:
                 disciplines = route.disciplines
             )
 
-        # 2. Разрешение дисциплин
+  
         log.info("Router определил дисциплины: %s", route.disciplines)
-        # 3. Расширение запроса (перефразировки + HyDE + декомпозиция)
+
         expanded = self._expander.expand(query, route, route.disciplines)
 
         # 4. Поиск → реранкинг → извлечение/генерация → верификация
@@ -134,44 +102,42 @@ class RAGPipeline:
             disciplines = route.disciplines
         )
 
-    # ------------------------------------------------------------------
-    # Internal
-    # ------------------------------------------------------------------
 
-    def _run(self, query: str, expanded):
-        """Поиск → реранкинг → FactExtractor или генерация → верификация."""
+    def _run(self, query: str, expanded_query) -> tuple[str, list[RetrievedChunk], VerificationResult, bool]:
         answer         = NO_DATA_MSG
         chunks         = []
         verified       = VerificationResult(is_valid=False, note="не запускалось")
         fact_extracted = False
 
         for attempt in range(MAX_RETRIES + 1):
-            # Поиск
-            chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
+            chunks = self._retrieval.retrieve(expanded_query, reranker=self._reranker)
             if not chunks:
                 log.warning("Поиск без результатов (попытка %d).", attempt + 1)
                 verified = VerificationResult(is_valid=False, note="нет чанков")
                 break
 
-            # Реранкинг
-            #chunks = self._reranker.rerank(query, chunks) старый rerank для всех типов запросов
-            # Вместо обычного rerank для multi.relation
-            if expanded.query_type == QueryType.MULTI_GLOBAL:
-                chunks = self._reranker.rerank_per_discipline(query, chunks, expanded.disciplines)
-            elif expanded.query_type == QueryType.MULTI_RELATION:
+   
+            if expanded_query.query_type == QueryType.MULTI_GLOBAL:
+                chunks = self._reranker.rerank_per_discipline(query, chunks, expanded_query.disciplines)
+            elif expanded_query.query_type == QueryType.MULTI_RELATION:
                 pass  # реранкинг уже сделан внутри _retrieve_multi_relation
             else:
                 chunks = self._reranker.rerank(query, chunks)
-            # FactExtractor — пробуем прямое извлечение для single.simple
-            fact = self._fact_extractor.try_extract(query, chunks, expanded.query_type)
-            if fact:
-                answer         = fact
-                fact_extracted = True
-                verified       = VerificationResult(is_valid=True, note="direct extraction")
-                break
+
+            if expanded_query.query_type in {QueryType.SINGLE_GLOBAL, QueryType.MULTI_GLOBAL, QueryType.MULTI_RELATION}:
+                chunks = self._retrieval._enrich_with_parents(chunks)    
+
+            ## FactExtractor — пробуем прямое извлечение для single.simple
+            #fact = None
+            ##fact = self._fact_extractor.try_extract(query, chunks, expanded_query.query_type)
+            #if fact:
+            #    answer         = fact
+            #    fact_extracted = True
+            #    verified       = VerificationResult(is_valid=True, note="direct extraction")
+            #    break
 
             # Обычная генерация
-            answer   = self._generation.generate(query, chunks, expanded)
+            answer   = self._generation.generate(query, chunks, expanded_query)
             verified = self._verification.verify(query, answer, chunks)
 
             if verified.is_valid:
@@ -179,7 +145,7 @@ class RAGPipeline:
 
             if verified.retry and attempt < MAX_RETRIES:
                 log.info("Retry поиска (попытка %d/%d) ...", attempt + 1, MAX_RETRIES)
-                expanded.paraphrases.append(query + " подробно, развёрнуто")
+                expanded_query.paraphrases.append(query + " подробно, развёрнуто")
                 continue
 
             if not verified.retry:

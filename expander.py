@@ -176,10 +176,10 @@ class QueryExpander:
                 messages=[{"role": "user", "content": prompt}],
             )
             raw = resp.choices[0].message.content
-            log.info("decompose_and_expand raw response: %r", raw)  # <-- добавь это
+            log.debug("decompose_and_expand raw response: %r", raw)  
             
             result = _parse_json(raw)
-            log.info("decompose_and_expand parsed: %r", result)     # <-- и это
+            log.debug("decompose_and_expand parsed: %r", result)   
             
             return result.get("sub_queries") or []
         except Exception as exc:

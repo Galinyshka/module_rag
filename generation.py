@@ -22,7 +22,7 @@ def build_context(chunks: list[RetrievedChunk]) -> str:
         log.info("build_context '%s': %d чанков, блоки: %s",
                  discipline,
                  len(disc_chunks),
-                 [c.block_name[:30] for c in disc_chunks])
+                 [c.block_name[:50] for c in disc_chunks])
         section_parts = [f"=== Дисциплина: {discipline} ==="]
         section_chars = 0
         truncated = False
@@ -50,7 +50,11 @@ class GenerationModule:
     def generate(self, query: str, chunks: list[RetrievedChunk], expanded: ExpandedQuery) -> str:
         template = GENERATE_PROMPTS.get(expanded.query_type.value,
                                         GENERATE_PROMPTS["single.simple"])
-        context  = build_context(chunks)
+        context = build_context(chunks)
+        if len(context) > MAX_CONTEXT_CHARS:
+            log.warning("Generation: context обрезан с %d до %d симв.", len(context), MAX_CONTEXT_CHARS)
+            context = context[:MAX_CONTEXT_CHARS]
+        log.info("Context: %s", context[:500].replace("\n", "\\n") + ("..." if len(context) > 500 else ""))
         log.info("Generation: тип=%s, контекст=%d симв.", expanded.query_type, len(context))
         return self._call(template.format(query=query, context=context))
 
@@ -60,11 +64,15 @@ class GenerationModule:
         return self._call(template.format(query=query, context=context[:MAX_CONTEXT_CHARS]))
 
     def _call(self, prompt: str) -> str:
+        log.info("Final prompt: %s", prompt[:1000].replace("\n", "\\n") + ("..." if len(prompt) > 500 else ""))
         resp = self._client.chat.completions.create(
             model      = LLM_MODEL_MAIN,
             max_tokens = LLM_MAX_TOKENS_MAIN,
             messages   = [{"role": "user", "content": prompt}],
         )
+        if not resp.choices:
+            log.error("Generation: пустой ответ от LLM! Ответ: %s", resp)
+            return "[Ошибка: пустой ответ от LLM]"
         answer = resp.choices[0].message.content.strip()
         log.info("Generation: ответ %d симв.", len(answer))
         return answer
