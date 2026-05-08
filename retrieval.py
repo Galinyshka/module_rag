@@ -57,7 +57,7 @@ class RetrievalModule:
             chunks = self._retrieve_multi_relation(expanded, reranker)
         else:
             chunks = self._retrieve_single(expanded)
-        return self._enrich_with_parents(chunks)
+        return chunks
 
     def get_full_document(self, discipline: str) -> list[RetrievedChunk]:
         """Собирает всю дисциплину для подачи в модель генерации."""
@@ -118,12 +118,18 @@ class RetrievalModule:
                         sq["original"][:40],
                         [(c.block_name[:25], round(c.score, 2)) for c in chunks])
 
+                # Для каждого подзапроса подтягиваем родителей и всех детей (как single.global)
+                chunks = self._enrich_with_parents(chunks)
+
+                log.info("    After parent enrichment [%s]: %d чанков",
+                        sq["original"][:40], len(chunks))
+
                 for c in chunks:
                     if c.block_id not in disc_best or c.score > disc_best[c.block_id].score:
                         disc_best[c.block_id] = c
 
             all_results.extend(disc_best.values())
-            log.info("  %s: итого %d уникальных чанков", disc, len(disc_best))
+            log.info("  %s: итого %d уникальных чанков (с parent retrieval)", disc, len(disc_best))
 
         return all_results
 
@@ -170,28 +176,96 @@ class RetrievalModule:
     # ------------------------------------------------------------------
 
     def _enrich_with_parents(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
+        """
+        Подтягивает родительские блоки и всех их детей (siblings).
+        
+        Логика:
+          1. Найти все parent_id у текущих чанков
+          2. Подтянуть сами родители
+          3. Подтянуть всех детей каждого родителя
+        """
         existing_ids = {c.block_id for c in chunks}
-        parent_ids   = [
-            c.metadata["parent_id"]
-            for c in chunks
-            if c.metadata.get("parent_id") and c.metadata["parent_id"] not in existing_ids
-        ]
+        
+        # Шаг 1: Собираем уникальные parent_id
+        parent_ids = []
+        for c in chunks:
+            pid = c.metadata.get("parent_id")
+            if pid:
+                parent_ids.append(pid)
+        
         parent_ids = list(dict.fromkeys(parent_ids))
         if not parent_ids:
             return chunks
 
+        # Шаг 2: Подтягиваем сами родительские блоки
         parent_points = self._qdrant.retrieve(
-            collection_name = self._collection,
-            ids             = parent_ids,
-            with_payload    = True,
-            with_vectors    = False,
+            collection_name=self._collection,
+            ids=parent_ids,
+            with_payload=True,
+            with_vectors=False,
         )
-        parents = [self._point_to_chunk(p, score=0.0) for p in parent_points]
-        log.info("Parent retrieval: +%d родительских блоков", len(parents))
+
+        parents = []
+        valid_parent_ids = []
+
+        for p in parent_points:
+            chunk = self._point_to_chunk(p, score=0.0)
+
+            # дополнительно можно отсечь пустые тексты
+            if not chunk.text or not chunk.text.strip():
+                continue
+
+            parents.append(chunk)
+            valid_parent_ids.append(chunk.block_id)
+
+        existing_ids.update(p.block_id for p in parents)
+        parent_ids = valid_parent_ids
+        
+        # Шаг 3: Подтягиваем всех ДЕТЕЙ каждого родителя
+        children = []
+        for parent_id in parent_ids:
+            # Ищем все точки, где metadata.parent_id == parent_id
+            result = self._qdrant.scroll(
+                collection_name = self._collection,
+                scroll_filter   = Filter(must=[
+                    FieldCondition(key="parent_id", match=MatchValue(value=parent_id))
+                ]),
+                limit           = 100,
+                with_payload    = True,
+                with_vectors    = False,
+            )
+            
+            for point in result[0]:
+                #if str(point.id) not in existing_ids:
+                children.append(self._point_to_chunk(point, score=0.0))
+                    #existing_ids.add(str(point.id))
+        
+        log.info("Parent retrieval: +%d родителей, +%d детей", len(parents), len(children))
         log.info("Chunks before build_context: %s",
          [(c.discipline, c.block_name[:20]) for c in chunks])
         
-        return [*chunks, *parents]
+        for p in parents:
+            log.info("PARENT BLOCK:\n%s\n", p.text)
+        for c in children:
+            log.info("CHILD BLOCK:\n%s\n", c.text[:200])
+
+        log.info("PARENT IDS: %s", parent_ids)
+        log.info("PARENTS: %s", [p.block_id for p in parents])
+        log.info("CHILDREN: %s", [c.block_id for c in children])
+        
+        result = [*chunks, *parents, *children]
+
+        #Убираем дубликаты по block_id, сохраняя порядок (parents и children могут пересекаться)
+        seen = set()
+        unique = []
+        for c in result:
+            key = c.block_id
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(c)
+
+        return unique
 
     # ------------------------------------------------------------------
     # RRF поиск

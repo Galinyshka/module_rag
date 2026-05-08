@@ -10,7 +10,7 @@ from models import RetrievedChunk, VerificationResult
 from prompts import VERIFY_PROMPT
 
 log = logging.getLogger(__name__)
-MAX_CONTEXT_CHARS = 40000
+MAX_CONTEXT_CHARS = 100_000
 
 
 
@@ -33,7 +33,7 @@ class VerificationModule:
             by_disc.setdefault(c.discipline, []).append(c)
 
         n = len(by_disc) or 1
-        per_disc_limit = 8_000 // n
+        per_disc_limit = 80_000 // n
 
         parts = []
         for disc, disc_chunks in by_disc.items():

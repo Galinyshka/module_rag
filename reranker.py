@@ -15,6 +15,7 @@ from sentence_transformers import CrossEncoder
 
 from config import RERANKER_MODEL, RERANKER_TOP_K, RERANKER_TOP_K_BALANCE
 from models import RetrievedChunk
+from retrieval import RetrievalModule
 
 log = logging.getLogger(__name__)
 
@@ -45,7 +46,8 @@ class Reranker:
         result = []
         for chunk, score in ranked[:RERANKER_TOP_K]:
             chunk.score = float(score)   # заменяем косинусный score на reranker score
-            result.append(chunk)
+            if score > -2:  # фильтр по минимальному порогу (можно настроить)
+                result.append(chunk)
 
         log.info("Reranker: %d -> %d чанков (top score=%.3f)",
                  len(chunks), len(result), result[0].score if result else 0)
@@ -59,7 +61,11 @@ class Reranker:
             log.info("Reranker scores: min=%.3f max=%.3f avg=%.3f | distribution: %s",
                      min(sc), max(sc), sum(sc)/len(sc),
                      " ".join(f"{s:.2f}" for s in sc))
-        
+        retriever = RetrievalModule()
+
+        result = retriever._enrich_with_parents(result)
+        log.info("    After parent enrichment: %d чанков",
+                        len(result))
         return result
 
     def rerank_with_balance(self, query: str, chunks: list[RetrievedChunk],
