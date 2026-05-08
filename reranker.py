@@ -49,6 +49,17 @@ class Reranker:
 
         log.info("Reranker: %d -> %d чанков (top score=%.3f)",
                  len(chunks), len(result), result[0].score if result else 0)
+        log.info("Chunks after rerank:\n%s",
+         "\n\n".join(
+             f"  [{i+1}] {c.score:+.2f} | {c.discipline} | {c.block_name}\n  {c.text[:200]}"
+             for i, c in enumerate(result)
+         ))
+        if result:
+            sc = [c.score for c in result]
+            log.info("Reranker scores: min=%.3f max=%.3f avg=%.3f | distribution: %s",
+                     min(sc), max(sc), sum(sc)/len(sc),
+                     " ".join(f"{s:.2f}" for s in sc))
+        
         return result
 
     def rerank_with_balance(self, query: str, chunks: list[RetrievedChunk],
@@ -118,4 +129,85 @@ class Reranker:
         log.info("Reranker after balance: %s (всего %d, min per disc=%d)",
                  after, len(result), min_per_disc)
         
+        return result
+
+
+    def rerank_per_discipline(self, query: str, chunks: list[RetrievedChunk],
+                            disciplines: list[str]) -> list[RetrievedChunk]:
+        """
+        Для MULTI_RELATION: реранкинг отдельно по каждой дисциплине,
+        затем объединение лучших чанков каждой.
+        """
+        if not chunks:
+            return chunks
+
+        by_disc = {}
+        for c in chunks:
+            by_disc.setdefault(c.discipline, []).append(c)
+
+        result = []
+        for disc in disciplines:
+            disc_chunks = by_disc.get(disc, [])
+            if not disc_chunks:
+                log.warning("rerank_per_discipline: нет чанков для '%s'", disc)
+                continue
+
+            pairs = [(query, c.text) for c in disc_chunks]
+            scores = self._model.predict(pairs)
+
+            ranked = sorted(zip(disc_chunks, scores), key=lambda x: x[1], reverse=True)
+
+            top = []
+            for chunk, score in ranked[:RERANKER_TOP_K_BALANCE]:
+                if score < 0:
+                    break
+                chunk.score = float(score)
+                top.append(chunk)
+                
+            # fallback: если всё отрицательное — берём 2 лучших с пометкой
+            if not top:
+                log.warning("  %s: все скоры отрицательные, берём 2 лучших как fallback", disc)
+                for chunk, score in ranked[:2]:
+                    chunk.score = float(score)
+                    top.append(chunk)
+
+            log.info("Chunks after rerank:\n%s",
+            "\n\n".join(
+                f"  [{i+1}] {c.score:+.2f} | {c.discipline} | {c.block_name}\n  {c.text[:200]}"
+                for i, c in enumerate(result)
+            ))
+
+            sc = [c.score for c in top]
+            log.info("  %s: %d -> %d чанков | scores: %s",
+                    disc, len(disc_chunks), len(top),
+                    " ".join(f"{s:.2f}" for s in sc))
+
+            result.extend(top)
+
+        return result
+    
+    def rerank_single_query(self, query: str, chunks: list[RetrievedChunk],
+                            top_k: int = 3) -> list[RetrievedChunk]:
+        if not chunks:
+            return chunks
+
+        pairs = [(query, c.text) for c in chunks]
+        scores = self._model.predict(pairs)
+        score_map = {c.block_id: float(s) for c, s in zip(chunks, scores)}
+
+        # топ по cross-encoder
+        ranked = sorted(chunks, key=lambda c: score_map[c.block_id], reverse=True)
+        result = []
+        for chunk in ranked[:top_k]:
+            chunk.score = score_map[chunk.block_id]
+            result.append(chunk)
+
+        # гарантируем топ-1 по RRF если его нет в результатах
+        rrf_top = chunks[0]
+        if rrf_top.block_id not in {c.block_id for c in result}:
+            rrf_top.score = score_map[rrf_top.block_id]
+            result.append(rrf_top)
+            log.debug("  RRF-top добавлен принудительно: %s (ce_score=%.2f)",
+                    rrf_top.block_name[:50], rrf_top.score)
+
         return result

@@ -13,25 +13,35 @@ def build_context(chunks: list[RetrievedChunk]) -> str:
     by_discipline: dict[str, list[RetrievedChunk]] = {}
     for c in chunks:
         by_discipline.setdefault(c.discipline, []).append(c)
+
+    n = len(by_discipline)
+    per_disc_limit = MAX_CONTEXT_CHARS // n if n else MAX_CONTEXT_CHARS
+
     parts = []
     for discipline, disc_chunks in by_discipline.items():
-        parts.append(f"=== Дисциплина: {discipline} ===")
-        for c in disc_chunks:
-            parts.append(f"[{c.block_name}]\n{c.text}")
-    
-    full_context = "\n\n".join(parts)
-    final_context = full_context[:MAX_CONTEXT_CHARS]
-    
-    # Логирование для отладки
-    if len(full_context) > MAX_CONTEXT_CHARS:
-        log.warning("build_context: контекст обрезан %d -> %d симв",
-                   len(full_context), len(final_context))
-        # Посчитаем сколько дисциплин в обрезанном контексте
-        cut_count = final_context.count("=== Дисциплина:")
-        log.warning("  Дисциплин в итоговом контексте: %d", cut_count)
-    
-    return final_context
+        log.info("build_context '%s': %d чанков, блоки: %s",
+                 discipline,
+                 len(disc_chunks),
+                 [c.block_name[:30] for c in disc_chunks])
+        section_parts = [f"=== Дисциплина: {discipline} ==="]
+        section_chars = 0
+        truncated = False
 
+        for c in disc_chunks:
+            block = f"[{c.block_name}]\n{c.text}"
+            if section_chars + len(block) > per_disc_limit:
+                truncated = True
+                break
+            section_parts.append(block)
+            section_chars += len(block)
+
+        if truncated:
+            section_parts.append("[...данные обрезаны из-за лимита контекста...]")
+            log.warning("build_context: '%s' обрезана до %d симв.", discipline, section_chars)
+
+        parts.append("\n\n".join(section_parts))
+
+    return "\n\n".join(parts)
 
 class GenerationModule:
     def __init__(self) -> None:

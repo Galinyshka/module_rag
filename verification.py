@@ -10,7 +10,7 @@ from models import RetrievedChunk, VerificationResult
 from prompts import VERIFY_PROMPT
 
 log = logging.getLogger(__name__)
-MAX_CONTEXT_CHARS = 6_000
+MAX_CONTEXT_CHARS = 40000
 
 
 
@@ -27,9 +27,22 @@ class VerificationModule:
         self._client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
 
     def verify(self, query: str, answer: str, chunks: list[RetrievedChunk]) -> VerificationResult:
-        context = "\n\n".join(
-            f"[{c.block_name}]\n{c.text}" for c in chunks
-        )[:MAX_CONTEXT_CHARS]
+        # группируем по дисциплинам с равным лимитом
+        by_disc: dict[str, list[RetrievedChunk]] = {}
+        for c in chunks:
+            by_disc.setdefault(c.discipline, []).append(c)
+
+        n = len(by_disc) or 1
+        per_disc_limit = 8_000 // n
+
+        parts = []
+        for disc, disc_chunks in by_disc.items():
+            section = f"=== {disc} ===\n"
+            section += "\n\n".join(f"[{c.block_name}]\n{c.text}" for c in disc_chunks)
+            parts.append(section[:per_disc_limit])
+
+        context = "\n\n".join(parts)
+   
 
         prompt = VERIFY_PROMPT.format(query=query, context=context, answer=answer)
         try:

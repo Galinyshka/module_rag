@@ -109,11 +109,9 @@ class RAGPipeline:
             )
 
         # 2. Разрешение дисциплин
-        log.info("Router определил тип запроса:  дисциплины: %s", route.disciplines)
-        resolved = self._retrieval.resolve_disciplines(route.disciplines)
-        log.info("Результат разрешения дисциплин: %s", resolved)
+        log.info("Router определил дисциплины: %s", route.disciplines)
         # 3. Расширение запроса (перефразировки + HyDE + декомпозиция)
-        expanded = self._expander.expand(query, route, resolved)
+        expanded = self._expander.expand(query, route, route.disciplines)
 
         # 4. Поиск → реранкинг → извлечение/генерация → верификация
         answer, chunks, verified, fact_extracted = self._run(query, expanded)
@@ -149,7 +147,7 @@ class RAGPipeline:
 
         for attempt in range(MAX_RETRIES + 1):
             # Поиск
-            chunks = self._retrieval.retrieve(expanded)
+            chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
             if not chunks:
                 log.warning("Поиск без результатов (попытка %d).", attempt + 1)
                 verified = VerificationResult(is_valid=False, note="нет чанков")
@@ -158,11 +156,12 @@ class RAGPipeline:
             # Реранкинг
             #chunks = self._reranker.rerank(query, chunks) старый rerank для всех типов запросов
             # Вместо обычного rerank для multi.relation
-            if expanded.query_type in {QueryType.MULTI_RELATION, QueryType.MULTI_GLOBAL}:
-                chunks = self._reranker.rerank_with_balance(query, chunks, expanded.disciplines)
+            if expanded.query_type == QueryType.MULTI_GLOBAL:
+                chunks = self._reranker.rerank_per_discipline(query, chunks, expanded.disciplines)
+            elif expanded.query_type == QueryType.MULTI_RELATION:
+                pass  # реранкинг уже сделан внутри _retrieve_multi_relation
             else:
                 chunks = self._reranker.rerank(query, chunks)
-
             # FactExtractor — пробуем прямое извлечение для single.simple
             fact = self._fact_extractor.try_extract(query, chunks, expanded.query_type)
             if fact:

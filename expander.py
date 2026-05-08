@@ -11,7 +11,7 @@ from config import (
 )
 
 from models import ExpandedQuery, QueryType, RouteResult
-from prompts import DECOMPOSE_PROMPT, PARAPHRASE_PROMPT, HYDE_PROMPT
+from prompts import DECOMPOSE_EXPAND_PROMPT, PARAPHRASE_PROMPT, HYDE_PROMPT
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -22,27 +22,21 @@ HYDE_QUERY_TYPES = {QueryType.SINGLE_SIMPLE, QueryType.SINGLE_GLOBAL}
 
 def _parse_json(text: str) -> dict:
     text = text.strip()
-    log.debug("Raw LLM content before parsing: %r", text[:1000])  
-
-    # Более агрессивная очистка
     text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"\s*```$", "", text)
-    
-    # Ищем первый JSON между фигурных скобок (на случай мусора до/после)
-    matches = re.findall(r'(\{.*?\})', text, re.DOTALL)
-    if matches:
-        text = matches[0]
-    
+
+    # Находим позицию первой { и последней } — это внешний объект
+    start = text.find('{')
+    end = text.rfind('}')
+    if start != -1 and end != -1 and end > start:
+        text = text[start:end+1]
+
     try:
         data = json.loads(text)
-        if isinstance(data, str):   
-            log.warning("LLM returned a string instead of dict: %r", data)
-            # Попытка второго шанса
-            data = json.loads(data)
         if not isinstance(data, dict):
             raise ValueError(f"Expected dict, got {type(data)}")
         return data
-    except Exception as e:
+    except Exception:
         log.error("JSON parsing failed. Content: %r", text[:1500])
         raise
 
@@ -58,22 +52,20 @@ class QueryExpander:
         resolved_disciplines: list[str],
     ) -> ExpandedQuery:
         
+        sub_queries = []
+        sub_queries_expanded = []
+        paraphrases = []
+        hyde_text = ""  
+
         if route.query_type == QueryType.MULTI_RELATION:
             # для запросов типа multi.relation сначала делаем декомпозицию, а потом перефразируем каждую часть
-            sub_queries = self._decompose(query)
+            sub_queries_expanded = self._decompose_and_expand(query, resolved_disciplines, PARAPHRASES_COUNT)
             
             # для каждого подзапроса делаем перефразировку в количестве 3х вариантов
-            sub_queries_expanded = []
-            for sub_q in sub_queries:
-                paraphrases = self._paraphrase(sub_q)
-                # результат сохраняем в виде списка словарей с оригиналом и перефразировками
-                sub_queries_expanded.append({
-                    "original": sub_q,
-                    "paraphrases": paraphrases
-                })
-            
+            sub_queries = [sq["original"] for sq in sub_queries_expanded]
             paraphrases = []
             hyde_text = ""
+
 
             # логируем multi.relation c перефразированными подзапросами
             log.info(
@@ -126,7 +118,7 @@ class QueryExpander:
         '''Вызов LLM с данным промптом, ожидая JSON в ответе. Возвращает распарсенный словарь.'''
         resp = self._client.chat.completions.create(
             model      = LLM_MODEL_MAIN,
-            max_tokens = max_tokens,
+            max_tokens = 5000,
             messages   = [{"role": "user", "content": prompt}],
         )
         log.debug("LLM response (raw): %r", resp)
@@ -170,14 +162,28 @@ class QueryExpander:
             log.exception("Paraphrase failed")  
             return []
 
-    def _decompose(self, query: str) -> list[str]:
-        '''Функция для вызова LLM для декомпозиции multi.relation запроса. Возвращает список подзапросов.'''
+    def _decompose_and_expand(self, query: str, disciplines: list[str], num_paraphrases: int) -> list[dict]:
         try:
-            return self._call_json(
-                DECOMPOSE_PROMPT.format(query=query)
-            ).get("sub_queries") or []
+            prompt = DECOMPOSE_EXPAND_PROMPT.format(
+                query=query,
+                disciplines=", ".join(f'«{d}»' for d in disciplines),
+                num_paraphrases=num_paraphrases,
+            )
+            # логируем сырой ответ ДО _call_json
+            resp = self._client.chat.completions.create(
+                model=LLM_MODEL_MAIN,
+                max_tokens=5000,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw = resp.choices[0].message.content
+            log.info("decompose_and_expand raw response: %r", raw)  # <-- добавь это
+            
+            result = _parse_json(raw)
+            log.info("decompose_and_expand parsed: %r", result)     # <-- и это
+            
+            return result.get("sub_queries") or []
         except Exception as exc:
-            log.warning("Decompose failed: %s", exc)
+            log.exception("decompose_and_expand failed")  # exception вместо warning — покажет traceback
             return []
 
     def _hyde(self, query: str) -> str:

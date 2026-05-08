@@ -16,7 +16,6 @@ from config import (
     TOP_K_SINGLE,
     TOP_K_STAGE1,
     TOP_K_PER_DISC,
-    MATCH_THRESHOLD,
     MAX_DISCIPLINES_MULTI,
     OVERVIEW_BLOCKS,
     RRF_PREFETCH_K,
@@ -45,24 +44,20 @@ class RetrievalModule:
         self._embed_cache: dict[str, list[float]] = {}
         self._qdrant     = QdrantClient(url=qdrant_url)
         self._collection = collection
-        self._discipline_index: list[str] = self._load_discipline_names()
-        log.info("Индекс дисциплин: %d записей", len(self._discipline_index))
 
     # ------------------------------------------------------------------
     # Public
     # ------------------------------------------------------------------
 
-    def retrieve(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
+    def retrieve(self, expanded: ExpandedQuery, reranker=None) -> list[RetrievedChunk]:
         query_type = expanded.query_type
-
         if query_type == QueryType.MULTI_GLOBAL:
             chunks = self._retrieve_multi_global(expanded)
         elif query_type == QueryType.MULTI_RELATION:
-            chunks = self._retrieve_multi_relation(expanded)
+            chunks = self._retrieve_multi_relation(expanded, reranker)
         else:
             chunks = self._retrieve_single(expanded)
         return self._enrich_with_parents(chunks)
-
 
     def get_full_document(self, discipline: str) -> list[RetrievedChunk]:
         """Собирает всю дисциплину для подачи в модель генерации."""
@@ -80,22 +75,6 @@ class RetrievalModule:
         log.info("Full document '%s': %d блоков", discipline, len(chunks))
         return chunks
 
-    def resolve_disciplines(self, raw_names: list[str]) -> list[str]:
-        ''''Сопоставляет сырые названия дисциплин из роутера с реальными названиями из корпуса.
-            Возвращает список распознанных дисциплин. '''
-        resolved = []
-        for name in raw_names:
-            best_score, best_match = 0.0, ""
-            for idx_name in self._discipline_index:
-                s = _sim(name, idx_name)
-                if s > best_score:
-                    best_score, best_match = s, idx_name
-            if best_score >= MATCH_THRESHOLD and best_match:
-                resolved.append(best_match)
-                log.info("'%s' -> '%s' (%.2f)", name, best_match, best_score)
-            else:
-                log.warning("'%s' не распознана (max=%.2f)", name, best_score)
-        return list(dict.fromkeys(resolved))
 
     # ------------------------------------------------------------------
     # Стратегии
@@ -108,53 +87,45 @@ class RetrievalModule:
             TOP_K_SINGLE,
         )
 
-    def _retrieve_multi_relation(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
-        """
-        Независимый RRF-поиск по каждой дисциплине.
-        Для каждой дисциплины используются подзапросы из декомпозиции.
-        """
-        # Только найденные Router'ом дисциплины — без fallback
+    def _retrieve_multi_relation(self, expanded: ExpandedQuery, reranker) -> list[RetrievedChunk]:
         if not expanded.disciplines:
-            log.warning("multi.relation: дисциплины не найдены в запросе")
             return []
-        
-        # Используем ТОЛЬКО подзапросы из декомпозиции + исходный запрос
-        # (НЕ все перефразировки!)
-        queries = [expanded.original]
-        if expanded.sub_queries:
-            queries.extend(expanded.sub_queries)
-        
-        log.info("multi.relation: исходный запрос + %d подзапросов = %d всего",
-                 len(expanded.sub_queries), len(queries))
-        for i, q in enumerate(queries, 1):
-            log.debug("  [%d] %s", i, q[:60])
-        
-        log.info("multi.relation: поиск по %d дисциплинам",
-                 len(expanded.disciplines))
+
+        all_results: list[RetrievedChunk] = []
+
         for disc in expanded.disciplines:
-            log.debug("  - %s", disc)
-        
-        merged: dict[str, RetrievedChunk] = {}
-        scores: dict[str, float] = {}
-        
-        # Для каждой дисциплины отдельный RRF-поиск
-        for disc in expanded.disciplines:
-            disc_results = self._multi_query_rrf(
-                queries, self._discipline_filter([disc]), TOP_K_PER_DISC
-            )
-            log.info("  %s: найдено %d блоков (примеры: %s)",
-                    disc, len(disc_results),
-                    ", ".join([c.block_name[:30] for c in disc_results[:3]]))
-            
-            for c in disc_results:
-                if c.block_id not in merged:
-                    merged[c.block_id] = c
-                    scores[c.block_id] = c.score
-                else:
-                    scores[c.block_id] = max(scores[c.block_id], c.score)
-        
-        log.info("multi.relation: итого %d уникальных блоков", len(merged))
-        return self._sort_by_score(merged, scores)
+            disc_subs = [sq for sq in expanded.sub_queries_expanded
+                        if sq["discipline"] == disc]
+
+            disc_best: dict[str, RetrievedChunk] = {}
+
+            for sq in disc_subs:
+                queries = [sq["original"]] + sq["paraphrases"]
+
+                # сначала поиск
+                chunks = self._multi_query_rrf(
+                    queries, self._discipline_filter([disc]), TOP_K_PER_DISC
+                )
+
+                log.info("    Before rerank [%s]: %s",
+                        sq["original"][:40],
+                        [(c.block_name[:25], round(c.score, 2)) for c in chunks])
+
+                # потом реранкинг
+                chunks = reranker.rerank_single_query(sq["original"], chunks)
+
+                log.info("    After rerank [%s]: %s",
+                        sq["original"][:40],
+                        [(c.block_name[:25], round(c.score, 2)) for c in chunks])
+
+                for c in chunks:
+                    if c.block_id not in disc_best or c.score > disc_best[c.block_id].score:
+                        disc_best[c.block_id] = c
+
+            all_results.extend(disc_best.values())
+            log.info("  %s: итого %d уникальных чанков", disc, len(disc_best))
+
+        return all_results
 
     def _retrieve_multi_global(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
         """
@@ -217,6 +188,9 @@ class RetrievalModule:
         )
         parents = [self._point_to_chunk(p, score=0.0) for p in parent_points]
         log.info("Parent retrieval: +%d родительских блоков", len(parents))
+        log.info("Chunks before build_context: %s",
+         [(c.discipline, c.block_name[:20]) for c in chunks])
+        
         return [*chunks, *parents]
 
     # ------------------------------------------------------------------
@@ -260,8 +234,15 @@ class RetrievalModule:
                     scores[c.block_id] = c.score
                 else:
                     scores[c.block_id] = max(scores[c.block_id], c.score)
-
-        return self._sort_by_score(seen, scores)[:top_k * 3]
+        result = self._sort_by_score(seen, scores)[:top_k * 3]
+        
+        if result:
+            sc = [scores[c.block_id] for c in result]
+            log.info("  RRF scores (%d chunks): min=%.3f max=%.3f avg=%.3f",
+                    len(result), min(sc), max(sc), sum(sc)/len(sc))
+        
+        return result
+        #return self._sort_by_score(seen, scores)[:top_k * 3]
 
     def _rrf_search(
         self,
@@ -369,6 +350,7 @@ class RetrievalModule:
         )
 
     def _discipline_filter(self, disciplines: list[str]) -> Filter | None:
+        '''Создаёт фильтр в бд для поиска по дисциплинам'''
         if not disciplines:
             return None
         if len(disciplines) == 1:
@@ -378,24 +360,3 @@ class RetrievalModule:
         return Filter(must=[FieldCondition(
             key="discipline", match=MatchAny(any=disciplines)
         )])
-
-    def _load_discipline_names(self) -> list[str]:
-        names: set[str] = set()
-        offset = None
-        while True:
-            result = self._qdrant.scroll(
-                collection_name = self._collection,
-                limit           = 250,
-                offset          = offset,
-                with_payload    = True,
-                with_vectors    = False,
-            )
-            batch, next_offset = result[0], result[1]
-            for point in batch:
-                d = (point.payload or {}).get("discipline", "")
-                if d:
-                    names.add(d)
-            if next_offset is None:
-                break
-            offset = next_offset
-        return sorted(names)
