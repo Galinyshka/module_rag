@@ -1,58 +1,33 @@
-"""
-Гибридный модуль поиска (Retrieval).
-
-Улучшения:
-  - RRF (Reciprocal Rank Fusion): поиск параллельно по questions_vec и
-    summary_vec, результаты объединяются по позиции в каждом рейтинге.
-    questions_vec — близок к живым запросам пользователя.
-    summary_vec   — близок к описательным / тематическим запросам.
-  - Кэш эмбедингов: каждый уникальный текст эмбедируется один раз.
-  - HyDE: если ExpandedQuery содержит hyde_text — используется как
-    дополнительный поисковый запрос.
-  - Parent retrieval: после поиска автоматически подтягиваются
-    родительские блоки для найденных дочерних.
-
-Стратегии:
-  single.*       — фильтр по дисциплине + RRF-поиск
-  multi.relation — независимый RRF-поиск по каждой дисциплине
-  multi.global   — двухэтапный: обзорные блоки → дисциплины → точный поиск
-"""
 from __future__ import annotations
-
 import logging
 import re
 from difflib import SequenceMatcher
-
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Filter, FieldCondition, MatchValue, MatchAny,
     Prefetch, FusionQuery, Fusion,
 )
+from models import ExpandedQuery, QueryType, RetrievedChunk
 
 from config import (
     EMBED_MODEL, QDRANT_URL, QDRANT_COLLECTION,
     VEC_QUESTIONS, VEC_SUMMARY,
+    TOP_K_SINGLE,
+    TOP_K_STAGE1,
+    TOP_K_PER_DISC,
+    MATCH_THRESHOLD,
+    MAX_DISCIPLINES_MULTI,
+    OVERVIEW_BLOCKS,
+    RRF_PREFETCH_K,
+    ALL_BLOCKS,
 )
-from models import ExpandedQuery, QueryType, RetrievedChunk
+
 
 log = logging.getLogger(__name__)
 
-TOP_K_SINGLE          = 6
-TOP_K_STAGE1          = 30
-TOP_K_PER_DISC        = 8
-MATCH_THRESHOLD       = 0.55
-MAX_DISCIPLINES_MULTI = 10
-OVERVIEW_BLOCKS       = ["course_info", "topics", "competencies"]
-
-# RRF prefetch размер — сколько кандидатов берём из каждого вектора
-# перед слиянием. Должен быть >= итогового top_k.
-RRF_PREFETCH_K = 50
-
-
 def _normalize(s: str) -> str:
     return re.sub(r"\s+", " ", s.strip().lower())
-
 
 def _sim(a: str, b: str) -> float:
     return SequenceMatcher(None, _normalize(a), _normalize(b)).ratio()
@@ -78,24 +53,20 @@ class RetrievalModule:
     # ------------------------------------------------------------------
 
     def retrieve(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
-        qt = expanded.query_type
-        if qt == QueryType.MULTI_GLOBAL:
+        query_type = expanded.query_type
+
+        if query_type == QueryType.MULTI_GLOBAL:
             chunks = self._retrieve_multi_global(expanded)
-        elif qt == QueryType.MULTI_RELATION:
+        elif query_type == QueryType.MULTI_RELATION:
             chunks = self._retrieve_multi_relation(expanded)
         else:
             chunks = self._retrieve_single(expanded)
-
         return self._enrich_with_parents(chunks)
 
+
     def get_full_document(self, discipline: str) -> list[RetrievedChunk]:
-        """Все блоки дисциплины — для fallback после провала верификации."""
-        ORDER = [
-            "course_info", "topics", "competencies", "topic", "competency",
-            "self_study_resources", "self_study_section",
-            "assessment_fund", "literature",
-            "online_resources", "other_sections", "other_section",
-        ]
+        """Собирает всю дисциплину для подачи в модель генерации."""
+
         result = self._qdrant.scroll(
             collection_name = self._collection,
             scroll_filter   = self._discipline_filter([discipline]),
@@ -105,12 +76,13 @@ class RetrievalModule:
         )
         points = result[0]
         chunks = [self._point_to_chunk(p, 1.0) for p in points]
-        chunks.sort(key=lambda c: ORDER.index(c.block_type)
-                    if c.block_type in ORDER else 99)
+        chunks.sort(key=lambda c: ALL_BLOCKS.index(c.block_type) if c.block_type in ALL_BLOCKS else 99)
         log.info("Full document '%s': %d блоков", discipline, len(chunks))
         return chunks
 
     def resolve_disciplines(self, raw_names: list[str]) -> list[str]:
+        ''''Сопоставляет сырые названия дисциплин из роутера с реальными названиями из корпуса.
+            Возвращает список распознанных дисциплин. '''
         resolved = []
         for name in raw_names:
             best_score, best_match = 0.0, ""

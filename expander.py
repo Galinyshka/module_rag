@@ -1,23 +1,12 @@
-"""
-Модуль расширения запроса (Query Expander).
-
-Стратегии:
-  1. Перефразировки — для всех типов запросов.
-  2. Декомпозиция — только для multi.relation.
-  3. HyDE — генерация гипотетического фрагмента документа для улучшения
-            эмбединга запроса (для single.simple и single.global).
-"""
 from __future__ import annotations
-
 import json
 import re
 import logging
-
 from openai import OpenAI
 
 from config import (
     LLM_BASE_URL, LLM_API_KEY,
-    LLM_MODEL_FAST, LLM_MAX_TOKENS_FAST, LLM_MAX_TOKENS_HYDE, LLM_MAX_TOKENS_MAIN,
+    LLM_MODEL_MAIN, LLM_MAX_TOKENS_HYDE, LLM_MAX_TOKENS_MAIN,
     PARAPHRASES_COUNT,
 )
 
@@ -31,10 +20,9 @@ log.setLevel(logging.INFO)
 HYDE_QUERY_TYPES = {QueryType.SINGLE_SIMPLE, QueryType.SINGLE_GLOBAL}
 
 
-
 def _parse_json(text: str) -> dict:
     text = text.strip()
-    log.debug("Raw LLM content before parsing: %r", text[:1000])  # ← добавьте!
+    log.debug("Raw LLM content before parsing: %r", text[:1000])  
 
     # Более агрессивная очистка
     text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
@@ -47,7 +35,7 @@ def _parse_json(text: str) -> dict:
     
     try:
         data = json.loads(text)
-        if isinstance(data, str):   # ← вот что у вас сейчас происходит!
+        if isinstance(data, str):   
             log.warning("LLM returned a string instead of dict: %r", data)
             # Попытка второго шанса
             data = json.loads(data)
@@ -86,7 +74,8 @@ class QueryExpander:
             
             paraphrases = []
             hyde_text = ""
-            
+
+            # логируем multi.relation c перефразированными подзапросами
             log.info(
                 "Expander (MULTI_RELATION):\n"
                 "  sub_queries (%d): %r\n"
@@ -101,12 +90,14 @@ class QueryExpander:
             sub_queries = []
             sub_queries_expanded = []
             
+            # HyDE для одиночных запросов, где он может дать наибольший прирост
             hyde_text = (
                 self._hyde(query)
                 if route.query_type in HYDE_QUERY_TYPES
                 else ""
             )
 
+            # логируем остальные типы
             log.info(
                 "Expander:\n"
                 "  paraphrases (%d): %r\n"
@@ -130,13 +121,11 @@ class QueryExpander:
         )
     
 
-    # ------------------------------------------------------------------
-    # Internal
-    # ------------------------------------------------------------------
 
     def _call_json(self, prompt: str, max_tokens: int = LLM_MAX_TOKENS_MAIN) -> dict:
+        '''Вызов LLM с данным промптом, ожидая JSON в ответе. Возвращает распарсенный словарь.'''
         resp = self._client.chat.completions.create(
-            model      = LLM_MODEL_FAST,
+            model      = LLM_MODEL_MAIN,
             max_tokens = max_tokens,
             messages   = [{"role": "user", "content": prompt}],
         )
@@ -144,15 +133,19 @@ class QueryExpander:
         return _parse_json(resp.choices[0].message.content)
 
     def _call_text(self, prompt: str, max_tokens: int) -> str:
+        '''Вызов LLM с данным промптом, возвращая текстовый ответ.'''
         resp = self._client.chat.completions.create(
-            model      = LLM_MODEL_FAST,
+            model      = LLM_MODEL_MAIN,
             max_tokens = max_tokens,
             messages   = [{"role": "user", "content": prompt}],
         )
         log.debug("LLM response (raw): %r", resp)
         return resp.choices[0].message.content.strip()
 
+
+
     def _paraphrase(self, query: str) -> list[str]:
+        '''Функция для вызова LLM для перефразировки запроса. Возвращает список перефразировок.'''
         try:
 
             prompt = PARAPHRASE_PROMPT.format(query=query, num_paraphrases=PARAPHRASES_COUNT)
@@ -174,10 +167,11 @@ class QueryExpander:
             return paraphrases
 
         except Exception as exc:
-            log.exception("Paraphrase failed")  # ← используйте log.exception!
+            log.exception("Paraphrase failed")  
             return []
 
     def _decompose(self, query: str) -> list[str]:
+        '''Функция для вызова LLM для декомпозиции multi.relation запроса. Возвращает список подзапросов.'''
         try:
             return self._call_json(
                 DECOMPOSE_PROMPT.format(query=query)
@@ -187,7 +181,7 @@ class QueryExpander:
             return []
 
     def _hyde(self, query: str) -> str:
-        """Генерирует гипотетический фрагмент РПД для улучшения эмбединга запроса."""
+        """Функция для вызова LLM для генерации HyDE-текста. Возвращает сгенерированный текст."""
         try:
             return self._call_text(
                 HYDE_PROMPT.format(query=query),

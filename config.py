@@ -18,6 +18,7 @@
 import os
 from dotenv import load_dotenv
 import json
+import pathlib
 import re
 load_dotenv()
 # ---------------------------------------------------------------------------
@@ -38,7 +39,6 @@ LLM_MAX_TOKENS_FAST   = 300
 LLM_MAX_TOKENS_VERIFY = 400
 LLM_MAX_TOKENS_MAIN   = 1200
 LLM_MAX_TOKENS_IDX    = 400
-#LLM_MAX_TOKENS_TIME   = 150
 LLM_MAX_TOKENS_HYDE   = 200
 LLM_MAX_TOKENS_EVAL   = 300   # оценка по одной метрике: score + rationale
 
@@ -70,17 +70,44 @@ EMBED_BATCH_SIZE = int(os.getenv("EMBED_BATCH_SIZE", "32"))
 FUZZY_THRESHOLD = 60   # минимальный score для попадания в кандидаты
 FUZZY_TOP_K     = 5    # максимум кандидатов, передаваемых в LLM
 
+
+# ---------------------------------------------------------------------------
+# Router
+# ---------------------------------------------------------------------------
+RPD_NAMES_PATH = pathlib.Path(__file__).parent / "rpd_names.json"
+if RPD_NAMES_PATH.exists():
+    with open(RPD_NAMES_PATH, "r", encoding="utf-8") as f:
+        RPD_NAMES = json.load(f)
+else:
+    RPD_NAMES = []
+
+# ---------------------------------------------------------------------------
+# Expander
+# ---------------------------------------------------------------------------
+PARAPHRASES_COUNT = 3 # Количество перефразировок запроса
+
 # ---------------------------------------------------------------------------
 # Reranker
 # ---------------------------------------------------------------------------
 # Multilingual cross-encoder, поддерживает русский язык
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
-RERANKER_TOP_K = "15"
-RERANKER_TOP_K_BALANCE = int(os.getenv("RERANKER_TOP_K_BALANCE", "8"))
+RERANKER_TOP_K = 15 # сколько чанков оставить после реранкинга
+RERANKER_TOP_K_BALANCE = 8 # для multi запросов с балансировкой: сколько чанков оставить после реранкинга, гарантируя представительство каждой дисциплины (если хватает релевантных кандидатов)
 
+TOP_K_SINGLE          = 6 # сколько чанков брать для single запросов
+TOP_K_STAGE1          = 30 # сколько чанков брать на первом этапе для multi запросов, до реранкинга
+TOP_K_PER_DISC        = 8 # для multi запросов: сколько чанков брать с каждой дисциплины, до реранкинга
+MATCH_THRESHOLD       = 0.55 # 
+MAX_DISCIPLINES_MULTI = 10  # для multi запросов: максимальное количество дисциплин, которые будут представлены в результатах (по количеству релевантных чанков)    
+OVERVIEW_BLOCKS       = ["course_info", "topics", "competencies"] 
 
-RPD_NAMES = ['алгоритмы и структуры данных в языке python', 'технологии обработки данных', 'технологии обработки больших данных', 'рекомендательные системы и коллаборативная фильтрация', 'прикладная теория графов', 'обработка текстов на естественных языках', 'машинное зрение', 'глубокое обучение', 'фундаментальные и генеративные модели', 'семантические технологии', 'технологии и алгоритмы анализа сетевых моделей', 'машинное обучение в семантическом и сетевом анализе', 'прикладные задачи машинного обучения']
+# RRF prefetch размер — сколько кандидатов берём из каждого вектора
+# перед слиянием. Должен быть >= итогового top_k.
+RRF_PREFETCH_K = 50
 
-# Количество перефразировок запроса
-PARAPHRASES_COUNT = 3
-
+ALL_BLOCKS = [
+    "course_info", "topics", "competencies", "topic", "competency",
+    "self_study_resources", "self_study_section",
+    "assessment_fund", "literature",
+    "online_resources", "other_sections", "other_section",
+] # полный список типов блоков для сортировки полного документа

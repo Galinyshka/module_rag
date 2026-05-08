@@ -109,8 +109,9 @@ class RAGPipeline:
             )
 
         # 2. Разрешение дисциплин
+        log.info("Router определил тип запроса:  дисциплины: %s", route.disciplines)
         resolved = self._retrieval.resolve_disciplines(route.disciplines)
-
+        log.info("Результат разрешения дисциплин: %s", resolved)
         # 3. Расширение запроса (перефразировки + HyDE + декомпозиция)
         expanded = self._expander.expand(query, route, resolved)
 
