@@ -88,7 +88,7 @@ class RAGPipeline:
     def _run(
         self, query: str, route: RouteResult,
     ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
-        expanded = self._build_expanded(query, route, expanded_flag=False)
+        expanded = self._expander.expand(query, route, route.disciplines, expanded_flag=False)
 
         if route.query_type == QueryType.MULTI_RELATION:
             return self._run_multi_relation(query, route, expanded)
@@ -96,14 +96,14 @@ class RAGPipeline:
             return self._run_multi_compare(query, expanded)
         return self._run_single(query, route, expanded)
 
-    def _run_single(self, query: str, route: RouteResult, expanded: ExpandedQuery) -> tuple[...]:
+    def _run_single(self, query: str, route: RouteResult, expanded: ExpandedQuery) -> tuple[str, list[RetrievedChunk], VerificationResult]:
         # Шаг 1: original only (expanded_flag=False → нет парафразов)
         chunks, verified, answer = self._generate_and_verify(query, expanded, step="1/3")
         if verified.is_valid:
             return answer, chunks, verified
 
         # Шаг 2: с парафразами (expanded_flag=True)
-        expanded_v2 = self._build_expanded(query, route, expanded_flag=True)
+        expanded_v2 = self._expander.expand(query, route, route.disciplines, expanded_flag=True)
         chunks, verified, answer = self._generate_and_verify(query, expanded_v2, step="2/3")
         if verified.is_valid:
             return answer, chunks, verified
@@ -132,7 +132,8 @@ class RAGPipeline:
         verified = self._verification.verify(query, answer, context, expanded.query_type)
 
         verified.note = f"[{step}] {verified.note}" if step else verified.note
-
+        log.info("=== Pipeline === Генерация и верификация: valid=%s, %d чанков, note=%s",
+                 verified.is_valid, len(chunks), verified.note)
         return chunks, verified, answer
     
     def _retrieve_chunks(
@@ -147,12 +148,6 @@ class RAGPipeline:
             chunks = self._retrieval._enrich_with_parents(chunks)
         return chunks
 
-    def _build_expanded(
-        self, query: str, route: RouteResult, *, expanded_flag: bool,
-    ) -> ExpandedQuery:
-        return self._expander.expand(
-            query, route, route.disciplines, expanded_flag=expanded_flag,
-        )
 
     def _run_multi_relation(
         self, query: str, route: RouteResult, expanded: ExpandedQuery,
@@ -161,7 +156,7 @@ class RAGPipeline:
         # Шаг 1: если sub_expanded пуст (expanded_flag=False) — это нормально, расширяем
         if not expanded.sub_expanded:
             log.info("=== Pipeline === (%s): первый проход, делаем декомпозицию.", route.query_type)
-            expanded = self._build_expanded(query, route, expanded_flag=True)
+            expanded = self._expander.expand(query, route, route.disciplines, expanded_flag=True)
 
         # После расширения всё ещё пусто — реальная ошибка
         if not expanded.sub_expanded:

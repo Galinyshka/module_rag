@@ -59,6 +59,4 @@ class VerificationModule:
             log.warning("=== Verification === parse error: %s", exc)
             result = VerificationResult(is_valid=True, note=f"parse error: {exc}")
 
-        log.info("=== Verification === [%s]: valid=%s  retry=%s  note=%s",
-                 LLM_MODEL_VERIFY, result.is_valid, result.retry, result.note)
         return result

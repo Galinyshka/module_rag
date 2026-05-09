@@ -98,4 +98,5 @@ class GenerationModule:
             return "[Ошибка: пустой ответ от LLM]"
         answer = resp.choices[0].message.content.strip()
         log.info("=== Generation === ответ %d симв.", len(answer))
+        log.info("=== Generation === ответ (первые 1000 симв.): %s", answer[:1000].replace("\n", "\\n") + ("..." if len(answer) > 500 else ""))
         return answer
