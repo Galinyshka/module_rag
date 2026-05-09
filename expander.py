@@ -72,7 +72,7 @@ class QueryExpander:
             sub_expanded = [
                 ExpandedQuery(
                     original    = sq["original"],
-                    paraphrases = sq.get("paraphrases", []),
+                    paraphrases = [],
                     sub_queries = [],
                     disciplines = [sq["discipline"]],
                     query_type  = QueryType.SINGLE_GLOBAL,
@@ -132,7 +132,8 @@ class QueryExpander:
             sub_queries=sub_queries,
             disciplines=resolved_disciplines,
             query_type=route.query_type,
-            sub_expanded=sub_expanded,  
+            sub_expanded=sub_expanded,
+            hyde_text=hyde_text,  
         )
     
 
