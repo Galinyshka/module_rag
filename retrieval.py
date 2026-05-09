@@ -64,8 +64,6 @@ class RetrievalModule:
         log.info("Full document '%s': %d блоков", discipline, len(chunks))
         return chunks
 
-
-
     def _retrieve_single(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
         '''Для single запросов: один запрос → RRF → реранк по всему корпусу.'''
         chunks = self._multi_query_rrf(
@@ -76,52 +74,7 @@ class RetrievalModule:
         return chunks
 
     
-    '''def _retrieve_multi_relation(self, expanded: ExpandedQuery, reranker) -> list[RetrievedChunk]:
-        if not expanded.disciplines:
-            return []
-
-        all_results: list[RetrievedChunk] = []
-
-        for disc in expanded.disciplines:
-            disc_subs = [sq for sq in expanded.sub_queries_expanded
-                        if sq["discipline"] == disc]
-
-            disc_best: dict[str, RetrievedChunk] = {}
-
-            for sq in disc_subs:
-                queries = [sq["original"]] + sq["paraphrases"]
-
-                # сначала поиск
-                chunks = self._multi_query_rrf(
-                    queries, self._discipline_filter([disc]), TOP_K_PER_DISC
-                )
-
-                log.info("    Before rerank [%s]: %s",
-                        sq["original"][:40],
-                        [(c.block_name[:25], round(c.score, 2)) for c in chunks])
-
-                # потом реранкинг
-                chunks = reranker.rerank_single_query(sq["original"], chunks)
-
-                log.info("    After rerank [%s]: %s",
-                        sq["original"][:40],
-                        [(c.block_name[:25], round(c.score, 2)) for c in chunks])
-
-                # Для каждого подзапроса подтягиваем родителей и всех детей (как single.global)
-                chunks = self._enrich_with_parents(chunks)
-
-                log.info("    After parent enrichment [%s]: %d чанков",
-                        sq["original"][:40], len(chunks))
-
-                for c in chunks:
-                    if c.block_id not in disc_best or c.score > disc_best[c.block_id].score:
-                        disc_best[c.block_id] = c
-
-            all_results.extend(disc_best.values())
-            log.info("  %s: итого %d уникальных чанков (с parent retrieval)", disc, len(disc_best))
-
-        return all_results
-
+    '''
     def _retrieve_multi_global(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
         """
         Stage 1 — обзорные блоки по всему корпусу → выявляем дисциплины.

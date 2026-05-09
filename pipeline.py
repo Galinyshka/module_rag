@@ -2,7 +2,6 @@ from __future__ import annotations
 import logging
 import time
 from expander      import QueryExpander
-from fact_extractor import FactExtractor
 from generation    import GenerationModule, build_context
 from models        import ExpandedQuery, QueryType, RAGResponse, RetrievedChunk, VerificationResult
 from reranker      import Reranker
@@ -33,7 +32,6 @@ class RAGPipeline:
         self._expander      = QueryExpander()
         self._retrieval     = RetrievalModule(qdrant_url=qdrant_url, collection=collection)
         self._reranker      = Reranker()
-        self._fact_extractor = FactExtractor()
         self._generation    = GenerationModule()
         self._verification  = VerificationModule()
         log.info("Пайплайн готов.")
@@ -49,7 +47,6 @@ class RAGPipeline:
                 query_type               = route.query_type,
                 is_verified              = True,
                 chunks_used              = [],
-                fact_extracted           = False,
                 verification_note        = "clarification required",
                 clarification_candidates = route.disciplines,  
                 disciplines = route.disciplines
@@ -61,7 +58,6 @@ class RAGPipeline:
                 query_type        = route.query_type,
                 is_verified       = True,
                 chunks_used       = [],
-                fact_extracted    = False,
                 verification_note = "discipline not in RPD_NAMES",
                 disciplines = route.disciplines
             )
@@ -72,24 +68,19 @@ class RAGPipeline:
                 query_type        = route.query_type,
                 is_verified       = True,
                 chunks_used       = [],
-                fact_extracted    = False,
                 verification_note = "irrelevant query",
                 disciplines = route.disciplines
             )
 
-  
         log.info("Router определил дисциплины: %s", route.disciplines)
 
-        #expanded = self._expander.expand(query, route, route.disciplines) - перенесен в run
-
-        answer, chunks, verified, fact_extracted = self._run(query, route)
+        answer, chunks, verified  = self._run(query, route)
 
         return RAGResponse(
             answer            = answer,
             query_type        = route.query_type,
             is_verified       = verified.is_valid,
             chunks_used       = chunks,
-            fact_extracted    = fact_extracted,
             verification_note = verified.note,
             disciplines = route.disciplines
         )
@@ -108,7 +99,6 @@ class RAGPipeline:
             expanded = self._expander.expand(query, route, route.disciplines, expanded_flag=False)
             return self._run_single(query, expanded)
 
-    # ── полный цикл для single / multi.global ──────────────────────────────
     def _run_single(self, query: str, expanded: ExpandedQuery,
     ) -> tuple[str, list[RetrievedChunk], VerificationResult, bool]:
         
@@ -116,7 +106,6 @@ class RAGPipeline:
         answer         = NO_DATA_MSG
         chunks         = []
         verified       = VerificationResult(is_valid=False, note="не запускалось")
-        fact_extracted = False
 
         for attempt in range(MAX_RETRIES + 1):
             if attempt == 1:
@@ -148,15 +137,18 @@ class RAGPipeline:
                 expanded.paraphrases.append(query + " подробно, развёрнуто")
                 continue
 
+            if not verified.retry and attempt == 0:
+                log.info("Первый проход не верифицирован, пробуем expanded_flag=True...")
+                continue
+
             if not verified.retry:
                 answer = NO_DATA_MSG
             break
 
-        # fulltext fallback — переехал из ask()
-        if not verified.is_valid and expanded.query_type in SINGLE_TYPES and not fact_extracted:
+        if not verified.is_valid and expanded.query_type in SINGLE_TYPES:
             answer, chunks, verified = self._single_fulltext_fallback(query, expanded, verified)
 
-        return answer, chunks, verified, fact_extracted
+        return answer, chunks, verified
 
     # ── multi.relation: sub_expanded → _run_single → синтез ───────────────
     def _run_multi_relation(self, query: str, expanded: ExpandedQuery,

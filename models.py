@@ -65,7 +65,6 @@ class RAGResponse:
     query_type:               QueryType
     is_verified:              bool
     chunks_used:              list
-    fact_extracted:           bool
     verification_note:        str
     clarification_candidates: list[str] = field(default_factory=list)
     disciplines:              list[str] = field(default_factory=list)

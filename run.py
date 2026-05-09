@@ -51,7 +51,6 @@ PROMPT_REGISTRY: dict[str, tuple[str, str]] = {
     "decompose":               ("rag.prompts", "DECOMPOSE_PROMPT"),
     "hyde":                    ("rag.prompts", "HYDE_PROMPT"),
     "verify":                  ("rag.prompts", "VERIFY_PROMPT"),
-    "fact-extract":            ("rag.prompts", "FACT_EXTRACT_PROMPT"),
     "generate-single-simple":  ("rag.prompts", "GENERATE_PROMPTS"),
     "generate-single-global":  ("rag.prompts", "GENERATE_PROMPTS"),
     "generate-multi-relation": ("rag.prompts", "GENERATE_PROMPTS"),
@@ -164,12 +163,8 @@ class _NoopReranker:
     def rerank(self, query, chunks):
         return chunks
 
-class _NoopFactExtractor:
-    def try_extract(self, query, chunks, query_type):
-        return None
 
-
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 # Форматирование
 # ---------------------------------------------------------------------------
 
@@ -189,7 +184,6 @@ def _print_response(response, verbose: bool = False) -> None:
         return
 
     print(f"Верифицирован:     {'✓' if response.is_verified else '✗'}")
-    print(f"Прямое извлечение: {'да' if response.fact_extracted else 'нет'}")
     if response.verification_note:
         print(f"Заметка:           {response.verification_note}")
     print("─" * 60)
@@ -207,7 +201,6 @@ def _response_to_dict(query: str, response, elapsed: float) -> dict[str, Any]:
         "answer":                   response.answer,
         "query_type":               response.query_type,
         "is_verified":              response.is_verified,
-        "fact_extracted":           response.fact_extracted,
         "verification_note":        response.verification_note,
         "clarification_candidates": getattr(response, "clarification_candidates", []),  # ← добавить
         "elapsed_sec":              round(elapsed, 2),
@@ -229,8 +222,6 @@ def _make_pipeline(args):
     pipeline = RAGPipeline(qdrant_url=args.qdrant, collection=args.collection)
     if args.no_reranker:
         pipeline._reranker = _NoopReranker()
-    if args.no_fact_extractor:
-        pipeline._fact_extractor = _NoopFactExtractor()
     return pipeline
 
 
@@ -310,20 +301,16 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
         results.append(_response_to_dict(query, response, elapsed))
 
         status = "✓" if response.is_verified else "✗"
-        flag   = " [direct]" if response.fact_extracted else ""
-        print(f"         {status}{flag}  {elapsed:.2f}с  {response.answer}\n")
 
     out_path = args.output or args.input.replace(".json", "_results.json")
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
 
     verified = sum(1 for r in results if r["is_verified"])
-    direct   = sum(1 for r in results if r["fact_extracted"])
     avg_time = sum(r["elapsed_sec"] for r in results) / len(results)
     print("── Итого ──")
     print(f"Вопросов:          {len(results)}")
     print(f"Верифицировано:    {verified}/{len(results)}")
-    print(f"Прямое извлечение: {direct}/{len(results)}")
     print(f"Среднее время:     {avg_time:.2f} с")
     print(f"Результаты:        {out_path}")
 
@@ -363,10 +350,6 @@ def build_parser() -> argparse.ArgumentParser:
     g = parser.add_argument_group("расширение запроса")
     g.add_argument("--no-hyde",       action="store_true")
     g.add_argument("--no-paraphrase", action="store_true")
-
-    # Извлечение
-    g = parser.add_argument_group("извлечение")
-    g.add_argument("--no-fact-extractor", action="store_true")
 
     # Промпты — каждый принимает путь к .txt файлу
     g = parser.add_argument_group(
