@@ -19,7 +19,7 @@ from retrieval import RetrievalModule
 
 log = logging.getLogger(__name__)
 
-RERANKER_TOP_K = 12
+RERANKER_TOP_K = 5
 class Reranker:
     def __init__(self) -> None:
         log.info("Загрузка cross-encoder: %s ...", RERANKER_MODEL)
@@ -46,8 +46,7 @@ class Reranker:
         reranked_chunks = []
         for chunk, score in ranked[:RERANKER_TOP_K]:
             chunk.score = float(score)   # заменяем косинусный score на reranker score
-            if score > -2:  # фильтр по минимальному порогу (можно настроить)
-                reranked_chunks.append(chunk)
+            reranked_chunks.append(chunk)
 
         log.info("Reranker: %d -> %d чанков (top score=%.3f)",
                  len(chunks), len(reranked_chunks), reranked_chunks[0].score if reranked_chunks else 0)
