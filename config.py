@@ -95,7 +95,8 @@ TOP_K_SINGLE          = 3 # сколько чанков брать для single
 # Reranker
 # ---------------------------------------------------------------------------
 # Multilingual cross-encoder, поддерживает русский язык
-RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
+#RERANKER_MODEL = os.getenv("RERANKER_MODEL", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1")
+RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
 RERANKER_TOP_K = 15 # сколько чанков оставить после реранкинга
 RERANKER_TOP_K_BALANCE = 5 # для multi запросов с балансировкой: сколько чанков оставить после реранкинга, гарантируя представительство каждой дисциплины (если хватает релевантных кандидатов)
 
