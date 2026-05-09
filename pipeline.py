@@ -7,7 +7,7 @@ from generation    import GenerationModule, build_context
 from models        import ExpandedQuery, QueryType, RAGResponse, RetrievedChunk, VerificationResult
 from reranker      import Reranker
 from retrieval    import RetrievalModule
-from router        import Router
+from router        import Router, RouteResult
 from verification  import VerificationModule
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -82,7 +82,7 @@ class RAGPipeline:
 
         expanded = self._expander.expand(query, route, route.disciplines)
 
-        answer, chunks, verified, fact_extracted = self._run(query, expanded)
+        answer, chunks, verified, fact_extracted = self._run(query, route)
 
         return RAGResponse(
             answer            = answer,
@@ -95,14 +95,18 @@ class RAGPipeline:
         )
 
 
-    def _run(self, query: str, expanded: ExpandedQuery,
+    def _run(self, query: str, route,
     ) -> tuple[str, list[RetrievedChunk], VerificationResult, bool]:
         
-        if expanded.query_type == QueryType.MULTI_RELATION:
+        if route.query_type == QueryType.MULTI_RELATION:
+            expanded = self._expander.expand(query, route, route.disciplines)
             return self._run_multi_relation(query, expanded)
-        if expanded.query_type == QueryType.MULTI_COMPARE:
+        elif expanded.query_type == QueryType.MULTI_COMPARE:
+            expanded = self._expander.expand(query, route, route.disciplines)
             return self._run_multi_compare(query, expanded)
-        return self._run_single(query, expanded)
+        else:
+            expanded = self._expander.expand(query, route, route.disciplines, expanded_flag=False)
+            return self._run_single(query, expanded)
 
     # ── полный цикл для single / multi.global ──────────────────────────────
     def _run_single(self, query: str, expanded: ExpandedQuery,
@@ -115,7 +119,11 @@ class RAGPipeline:
         fact_extracted = False
 
         for attempt in range(MAX_RETRIES + 1):
-            chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
+            if attempt == 1:
+                expanded = self._expander.expand(query, RouteResult(query_type=expanded.query_type, disciplines=expanded.disciplines), expanded.disciplines)
+                chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
+            else:
+                chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
             if not chunks:
                 log.warning("Поиск без результатов (попытка %d).", attempt + 1)
                 verified = VerificationResult(is_valid=False, note="нет чанков")
