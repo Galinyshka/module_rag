@@ -27,17 +27,17 @@ class RAGPipeline:
         qdrant_url: str = "http://localhost:6333",
         collection: str = "discipline_chunks",
     ) -> None:
-        log.info("Инициализация RAG-пайплайна ...")
+        log.info("=== Pipeline === Инициализация RAG-пайплайна ...")
         self._router        = Router()
         self._expander      = QueryExpander()
         self._retrieval     = RetrievalModule(qdrant_url=qdrant_url, collection=collection)
         self._reranker      = Reranker()
         self._generation    = GenerationModule()
         self._verification  = VerificationModule()
-        log.info("Пайплайн готов.")
+        log.info("=== Pipeline === Пайплайн инициализирован.")
 
     def ask(self, query: str) -> RAGResponse:
-        log.info("=== Запрос: %s", query)
+        log.info("=== Pipeline === Запрос: %s", query)
 
         route = self._router.route(query)
 
@@ -72,7 +72,7 @@ class RAGPipeline:
                 disciplines = route.disciplines
             )
 
-        log.info("Router определил дисциплины: %s", route.disciplines)
+        log.info("=== Pipeline === Router определил дисциплины: %s", route.disciplines)
 
         answer, chunks, verified  = self._run(query, route)
 
@@ -85,86 +85,101 @@ class RAGPipeline:
             disciplines = route.disciplines
         )
 
+    def _run(
+        self, query: str, route: RouteResult,
+    ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
+        expanded = self._build_expanded(query, route, expanded_flag=False)
 
-    def _run(self, query: str, route,
-    ) -> tuple[str, list[RetrievedChunk], VerificationResult, bool]:
-        
         if route.query_type == QueryType.MULTI_RELATION:
-            expanded = self._expander.expand(query, route, route.disciplines)
-            return self._run_multi_relation(query, expanded)
-        elif route.query_type == QueryType.MULTI_COMPARE:
-            expanded = self._expander.expand(query, route, route.disciplines)
+            return self._run_multi_relation(query, route, expanded)
+        if route.query_type == QueryType.MULTI_COMPARE:
             return self._run_multi_compare(query, expanded)
+        return self._run_single(query, route, expanded)
+
+    def _run_single(self, query: str, route: RouteResult, expanded: ExpandedQuery) -> tuple[...]:
+        # Шаг 1: original only (expanded_flag=False → нет парафразов)
+        chunks, verified, answer = self._generate_and_verify(query, expanded, step="1/3")
+        if verified.is_valid:
+            return answer, chunks, verified
+
+        # Шаг 2: с парафразами (expanded_flag=True)
+        expanded_v2 = self._build_expanded(query, route, expanded_flag=True)
+        chunks, verified, answer = self._generate_and_verify(query, expanded_v2, step="2/3")
+        if verified.is_valid:
+            return answer, chunks, verified
+
+        # Шаг 3: fulltext fallback
+        if expanded_v2.query_type in SINGLE_TYPES:
+            answer, chunks, verified = self._single_fulltext_fallback(query, expanded_v2, verified)
+            verified.note = f"[3/3] {verified.note}"
         else:
-            expanded = self._expander.expand(query, route, route.disciplines, expanded_flag=False)
-            return self._run_single(query, expanded)
-
-    def _run_single(self, query: str, expanded: ExpandedQuery,
-    ) -> tuple[str, list[RetrievedChunk], VerificationResult, bool]:
-        
-        """Retry-цикл + fulltext fallback. Используется и напрямую, и из _run_multi_relation."""
-        answer         = NO_DATA_MSG
-        chunks         = []
-        verified       = VerificationResult(is_valid=False, note="не запускалось")
-
-        for attempt in range(MAX_RETRIES + 1):
-            if attempt == 1:
-                expanded = self._expander.expand(query, RouteResult(query_type=expanded.query_type, disciplines=expanded.disciplines), expanded.disciplines)
-                chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
-            else:
-                chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
-            if not chunks:
-                log.warning("Поиск без результатов (попытка %d).", attempt + 1)
-                verified = VerificationResult(is_valid=False, note="нет чанков")
-                break
-
-            if expanded.query_type == QueryType.MULTI_GLOBAL:
-                chunks = self._reranker.rerank_per_discipline(query, chunks, expanded.disciplines)
-            else:
-                chunks = self._reranker.rerank(query, chunks)
-
-            if expanded.query_type in {QueryType.SINGLE_GLOBAL, QueryType.MULTI_GLOBAL}:
-                chunks = self._retrieval._enrich_with_parents(chunks)
-
-            answer, context   = self._generation.generate(query, chunks, expanded)
-            verified = self._verification.verify(query, answer, context, expanded.query_type)
-
-            if verified.is_valid:
-                break
-                
-            if verified.retry and attempt < MAX_RETRIES:
-                log.info("Retry (попытка %d/%d) ...", attempt + 1, MAX_RETRIES)
-                expanded.paraphrases.append(query + " подробно, развёрнуто")
-                continue
-
-            if not verified.retry and attempt == 0:
-                log.info("Первый проход не верифицирован, пробуем expanded_flag=True...")
-                continue
-
-            if not verified.retry:
-                answer = NO_DATA_MSG
-            break
-
-        if not verified.is_valid and expanded.query_type in SINGLE_TYPES:
-            answer, chunks, verified = self._single_fulltext_fallback(query, expanded, verified)
+            answer, chunks = NO_DATA_MSG, []
 
         return answer, chunks, verified
 
-    # ── multi.relation: sub_expanded → _run_single → синтез ───────────────
-    def _run_multi_relation(self, query: str, expanded: ExpandedQuery,
-    ) -> tuple[str, list[RetrievedChunk], VerificationResult, bool]:
-        
+
+    def _generate_and_verify(
+        self, query: str, expanded: ExpandedQuery, *, step: str = "",
+    ) -> tuple[list[RetrievedChunk], VerificationResult, str]:
+        chunks = self._retrieve_chunks(query, expanded)
+
+        if not chunks:
+            log.warning("=== Pipeline === Чанки не найдены.")
+            note = "нет чанков"
+            return [], VerificationResult(is_valid=False, note=f"[{step}] {note}" if step else note), NO_DATA_MSG
+
+        answer, context = self._generation.generate(query, chunks, expanded)
+        verified = self._verification.verify(query, answer, context, expanded.query_type)
+
+        verified.note = f"[{step}] {verified.note}" if step else verified.note
+
+        return chunks, verified, answer
+    
+    def _retrieve_chunks(
+        self, query: str, expanded: ExpandedQuery,
+    ) -> list[RetrievedChunk]:
+        chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
+        if expanded.query_type == QueryType.MULTI_GLOBAL:
+            chunks = self._reranker.rerank_per_discipline(query, chunks, expanded.disciplines)
+        else:
+            chunks = self._reranker.rerank(query, chunks)
+        if expanded.query_type in {QueryType.SINGLE_GLOBAL, QueryType.MULTI_GLOBAL}:
+            chunks = self._retrieval._enrich_with_parents(chunks)
+        return chunks
+
+    def _build_expanded(
+        self, query: str, route: RouteResult, *, expanded_flag: bool,
+    ) -> ExpandedQuery:
+        return self._expander.expand(
+            query, route, route.disciplines, expanded_flag=expanded_flag,
+        )
+
+    def _run_multi_relation(
+        self, query: str, route: RouteResult, expanded: ExpandedQuery,
+    ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
+
+        # Шаг 1: если sub_expanded пуст (expanded_flag=False) — это нормально, расширяем
+        if not expanded.sub_expanded:
+            log.info("=== Pipeline === (%s): первый проход, делаем декомпозицию.", route.query_type)
+            expanded = self._build_expanded(query, route, expanded_flag=True)
+
+        # После расширения всё ещё пусто — реальная ошибка
+        if not expanded.sub_expanded:
+            log.warning("=== Pipeline === (%s): sub_expanded пуст даже после расширения.", route.query_type)
+            return NO_DATA_MSG, [], VerificationResult(is_valid=False, note="sub_expanded пуст")
+
         sub_answers: list[tuple[str, str]] = []
         all_chunks:  list[RetrievedChunk]  = []
         results = {}
 
         def process_sub(sub_eq: ExpandedQuery):
             t0 = time.perf_counter()
-            log.info("MULTI_RELATION sub START: '%s'", sub_eq.original)
-            answer, chunks, verified, _ = self._run_single(sub_eq.original, sub_eq)
+            log.info("=== Pipeline === (%s) sub START: '%s'", route.query_type, sub_eq.original)
+            sub_route = RouteResult(query_type=sub_eq.query_type, disciplines=sub_eq.disciplines)
+            answer, chunks, verified = self._run_single(sub_eq.original, sub_route, sub_eq)
             log.info(
-                "MULTI_RELATION sub DONE: '%s' — %.1f с",
-                sub_eq.original, time.perf_counter() - t0
+                "=== Pipeline === (%s) sub DONE: '%s' — %.1f с",
+                route.query_type, sub_eq.original, time.perf_counter() - t0,
             )
             return sub_eq.original, answer, chunks
 
@@ -177,65 +192,56 @@ class RAGPipeline:
                 original, answer, chunks = future.result()
                 results[original] = (answer, chunks)
 
-        # восстанавливаем порядок как в sub_expanded
         for sub_eq in expanded.sub_expanded:
             answer, chunks = results[sub_eq.original]
             all_chunks.extend(chunks)
             if answer != NO_DATA_MSG:
                 sub_answers.append((sub_eq.original, answer))
-                log.info("sub '%s': %d симв.", sub_eq.original, len(answer))
+                log.info("=== Pipeline === sub '%s': %d симв.", sub_eq.original, len(answer))
             else:
-                log.warning("Нет данных для подзапроса: '%s'", sub_eq.original)
+                log.warning("=== Pipeline === Нет данных для подзапроса: '%s'", sub_eq.original)
 
         if not sub_answers:
-            return NO_DATA_MSG, [], VerificationResult(is_valid=False, note="нет ответов по подзапросам"), False
+            return NO_DATA_MSG, [], VerificationResult(is_valid=False, note="нет ответов по подзапросам")
 
         final_answer, context = self._generation.generate_synthesis(query, sub_answers)
         verified = self._verification.verify(query, final_answer, context, expanded.query_type)
-        return final_answer, all_chunks, verified, False
-    
-    def _run_multi_compare(
-        self,
-        query: str,
-        expanded: ExpandedQuery,
-    ) -> tuple[str, list[RetrievedChunk], VerificationResult, bool]:
-        """Загружает полные документы всех дисциплин и генерирует сравнение."""
+        return final_answer, all_chunks, verified
 
+    def _run_multi_compare(
+        self, query: str, expanded: ExpandedQuery,
+    ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
+        """Загружает полные документы всех дисциплин и генерирует сравнение."""
         all_chunks: list[RetrievedChunk] = []
 
         for discipline in expanded.disciplines:
             doc_chunks = self._retrieval.get_full_document(discipline)
             if doc_chunks:
                 all_chunks.extend(doc_chunks)
-                log.info("MULTI_COMPARE: загружен '%s' (%d чанков)", discipline, len(doc_chunks))
+                log.info("=== Pipeline === MULTI_COMPARE: загружен '%s' (%d чанков)", discipline, len(doc_chunks))
             else:
-                log.warning("MULTI_COMPARE: нет документа для '%s'", discipline)
+                log.warning("=== Pipeline === MULTI_COMPARE: нет документа для '%s'", discipline)
 
         if not all_chunks:
-            return (
-                NO_DATA_MSG,
-                [],
-                VerificationResult(is_valid=False, note="документы не найдены"),
-                False,
-            )
+            return NO_DATA_MSG, [], VerificationResult(is_valid=False, note="документы не найдены")
 
-        answer, context   = self._generation.generate_compare(query, all_chunks)
+        answer, context = self._generation.generate_compare(query, all_chunks)
         verified = self._verification.verify(query, answer, context, expanded.query_type)
-
         log.info(
-            "MULTI_COMPARE итог: %d дисциплин, verified=%s",
+            "=== Pipeline === MULTI_COMPARE итог: %d дисциплин, verified=%s",
             len(expanded.disciplines), verified.is_valid,
         )
-        return answer, all_chunks, verified, False
+        return answer, all_chunks, verified
+
 
     def _single_fulltext_fallback(self, query: str, expanded: ExpandedQuery, prev_verified: VerificationResult):
         """Загружает полный документ и регенерирует ответ."""
         if not expanded.disciplines:
-            log.warning("Fallback невозможен: дисциплина не определена.")
+            log.warning("=== Pipeline === Fallback невозможен: дисциплина не определена.")
             return NO_DATA_MSG, [], prev_verified
 
         discipline = expanded.disciplines[0]
-        log.info("Single fallback: полный документ '%s'", discipline)
+        log.info("=== Pipeline === Single fallback: полный документ '%s'", discipline)
 
         full_chunks = self._retrieval.get_full_document(discipline)
         if not full_chunks:
@@ -245,5 +251,5 @@ class RAGPipeline:
             query, build_context(full_chunks), expanded.query_type.value
         )
         verified = self._verification.verify(query, answer, context, expanded.query_type)
-        log.info("Single fallback: valid=%s", verified.is_valid)
+        log.info("=== Pipeline === Single fallback: valid=%s", verified.is_valid)
         return answer, full_chunks, verified

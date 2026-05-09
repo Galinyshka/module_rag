@@ -14,10 +14,15 @@ log = logging.getLogger(__name__)
 def _parse_json(text: str) -> dict:
     """Парсит JSON из ответа модели, убирая markdown-блоки если они есть."""
     text = text.strip()
+    if not text:
+        raise ValueError("Empty response from LLM")
     # Убираем ```json ... ``` или ``` ... ```
     text = re.sub(r"^```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```$", "", text)
-    return json.loads(text.strip())
+    text = text.strip()
+    if not text:
+        raise ValueError("Empty JSON after removing markdown")
+    return json.loads(text)
 
 class VerificationModule:
     def __init__(self) -> None:
@@ -26,7 +31,7 @@ class VerificationModule:
     def verify(self, query: str, answer: str, context: str, query_type: QueryType) -> VerificationResult:
     
         if len(context) > 80_000:
-            log.warning("Verification: context обрезан %d → 80000 симв.", len(context))
+            log.warning("=== Verification === context обрезан %d → 80000 симв.", len(context))
             context = context[:80_000]
             
         template = (
@@ -41,16 +46,19 @@ class VerificationModule:
                 max_tokens = LLM_MAX_TOKENS_VERIFY,
                 messages   = [{"role": "user", "content": prompt}],
             )
-            data   = _parse_json(resp.choices[0].message.content)
+            raw_content = resp.choices[0].message.content
+            log.debug("=== Verification === raw LLM response: %r", raw_content)
+            
+            data   = _parse_json(raw_content)
             result = VerificationResult(
                 is_valid = bool(data.get("is_valid", True)),
                 retry    = bool(data.get("retry", False)),
                 note     = data.get("note", ""),
             )
         except Exception as exc:
-            log.warning("Verification parse error: %s", exc)
+            log.warning("=== Verification === parse error: %s", exc)
             result = VerificationResult(is_valid=True, note=f"parse error: {exc}")
 
-        log.info("Verification [%s]: valid=%s  retry=%s  note=%s",
+        log.info("=== Verification === [%s]: valid=%s  retry=%s  note=%s",
                  LLM_MODEL_VERIFY, result.is_valid, result.retry, result.note)
         return result

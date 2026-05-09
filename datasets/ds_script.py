@@ -1,9 +1,6 @@
 import json
 
 def split_dataset(input_file='datasets/dataset.json'):
-    """
-    Разделяет dataset на три файла по router_type
-    """
     # Загрузка данных
     with open(input_file, 'r', encoding='utf-8') as f:
         data = json.load(f)
@@ -43,6 +40,5 @@ def split_dataset(input_file='datasets/dataset.json'):
     
     print(f"Готово! single_ds.json: {len(single)}, relation_ds.json: {len(relation)}, global_ds.json: {len(global_ds)}, router_check.json: {len(router_check)}")
 
-# Использование
 if __name__ == '__main__':
     split_dataset('datasets/dataset.json')

@@ -19,7 +19,7 @@ def build_context(chunks: list[RetrievedChunk]) -> str:
 
     parts = []
     for discipline, disc_chunks in by_discipline.items():
-        log.info("build_context '%s': %d чанков, блоки: %s",
+        log.info("=== Generation === build_context '%s': %d чанков, блоки: %s",
                  discipline,
                  len(disc_chunks),
                  [c.block_name[:50] for c in disc_chunks])
@@ -37,7 +37,7 @@ def build_context(chunks: list[RetrievedChunk]) -> str:
 
         if truncated:
             section_parts.append("[...данные обрезаны из-за лимита контекста...]")
-            log.warning("build_context: '%s' обрезана до %d симв.", discipline, section_chars)
+            log.warning("=== Generation === build_context: '%s' обрезана до %d симв.", discipline, section_chars)
 
         parts.append("\n\n".join(section_parts))
 
@@ -52,15 +52,15 @@ class GenerationModule:
                                         GENERATE_PROMPTS["single.simple"])
         context = build_context(chunks)
         if len(context) > MAX_CONTEXT_CHARS:
-            log.warning("Generation: context обрезан с %d до %d симв.", len(context), MAX_CONTEXT_CHARS)
+            log.warning("=== Generation === context обрезан с %d до %d симв.", len(context), MAX_CONTEXT_CHARS)
             context = context[:MAX_CONTEXT_CHARS]
-        log.info("Context: %s", context[:500].replace("\n", "\\n") + ("..." if len(context) > 500 else ""))
-        log.info("Generation: тип=%s, контекст=%d симв.", expanded.query_type, len(context))
+        log.debug("=== Generation === Context: %s", context[:500].replace("\n", "\\n") + ("..." if len(context) > 500 else ""))
+        log.info("=== Generation === тип=%s, контекст=%d симв.", expanded.query_type, len(context))
         return self._call(template.format(query=query, context=context)), context
 
     def generate_from_context(self, query: str, context: str, query_type_value: str) -> str:
         template = GENERATE_PROMPTS.get(query_type_value, GENERATE_PROMPTS["single.simple"])
-        log.info("Generation (fallback): контекст=%d симв.", len(context))
+        log.info("=== Generation === (fallback): контекст=%d симв.", len(context))
         return self._call(template.format(query=query, context=context)), context
 
     def generate_synthesis(self, query: str,
@@ -74,7 +74,7 @@ class GenerationModule:
         context  = "\n\n---\n\n".join(parts)
         combined = "\n\n---\n\n".join(parts)
         prompt = SYNTHESIS_PROMPT.format(query=query, sub_answers=combined)
-        log.info("Synthesis: %d частичных ответов, промпт %d симв.", len(sub_answers), len(prompt))
+        log.info("=== Generation === Synthesis: %d частичных ответов, промпт %d симв.", len(sub_answers), len(prompt))
         return self._call(prompt), context
 
     def generate_compare(self, query: str, chunks: list[RetrievedChunk],) -> str:
@@ -82,20 +82,20 @@ class GenerationModule:
         if len(context) > MAX_CONTEXT_CHARS:
             context = context[:MAX_CONTEXT_CHARS]
         prompt = COMPARE_PROMPT.format(query=query, context=context)
-        log.info("Compare: %d дисциплин, контекст=%d симв.", 
+        log.info("=== Generation === Compare: %d дисциплин, контекст=%d симв.", 
                  len({c.discipline for c in chunks}), len(context))
         return self._call(prompt), context
     
     def _call(self, prompt: str) -> str:
-        log.info("Final prompt: %s", prompt[:1000].replace("\n", "\\n") + ("..." if len(prompt) > 500 else ""))
+        log.debug("=== Generation === Final prompt: %s", prompt[:1000].replace("\n", "\\n") + ("..." if len(prompt) > 500 else ""))
         resp = self._client.chat.completions.create(
             model      = LLM_MODEL_MAIN,
             max_tokens = LLM_MAX_TOKENS_MAIN,
             messages   = [{"role": "user", "content": prompt}],
         )
         if not resp.choices:
-            log.error("Generation: пустой ответ от LLM! Ответ: %s", resp)
+            log.error("=== Generation === пустой ответ от LLM! Ответ: %s", resp)
             return "[Ошибка: пустой ответ от LLM]"
         answer = resp.choices[0].message.content.strip()
-        log.info("Generation: ответ %d симв.", len(answer))
+        log.info("=== Generation === ответ %d симв.", len(answer))
         return answer

@@ -106,17 +106,17 @@ class Router:
         """
         # Шаг 1.1: LLM извлекает сырые имена из запроса
         extracted_names = _extract_query_names(self._client, query) # возвращет список названий строго из запроса, может быть пустым
-        log.info("Extracted names from query: %s", extracted_names)
+        log.info("=== Router === Names from query: %s", extracted_names)
 
         if not extracted_names:
             # если LLM не извлёк ничего, возвращаем None, чтобы route() попытался классифицировать запрос как zero
-            log.info("No extracted names, returning None")
+            log.info("=== Router === No extracted names, returning None")
             return None
 
         # Шаг 1.2: fuzzy 
         candidates, not_found_names = _fuzzy_candidates(extracted_names)
-        log.info("Fuzzy candidates: %s", candidates)
-        log.info("Not found names: %s", not_found_names)
+        log.info("=== Router === Fuzzy candidates: %s", candidates)
+        log.info("=== Router === Not found names: %s", not_found_names)
 
         if not_found_names:
             message = "Дисциплины " + ", ".join(not_found_names) + " не найдены."
@@ -127,7 +127,7 @@ class Router:
             )
         
         if not candidates:
-            log.info("No fuzzy candidates found, returning None")
+            log.info("=== Router === No fuzzy candidates found, returning None")
             return None
 
         candidates_text = "\n".join(f"- {c}" for c in candidates)
@@ -143,7 +143,7 @@ class Router:
             return None
 
         status = data.get("status")
-        log.info("LLM extraction status: %s", status) # варианты: "found", "clarify", "not_found"
+        log.info("=== Router === LLM extraction status: %s", status) # варианты: "found", "clarify", "not_found"
 
         # Шаг 1.3: анализируем результат LLMа и возвращаем RouteResult
         if status == "found":
@@ -225,9 +225,9 @@ class Router:
                 result = RouteResult(query_type=query_type, disciplines=[]) 
 
         except Exception as exc:
-            log.warning("Router fallback: %s", exc)
+            log.warning("=== Router === Router fallback: %s", exc)
             return RouteResult(QueryType.SINGLE_SIMPLE, [], f"fallback: {exc}")
 
-        log.info("Router: type=%s  disciplines=%s", result.query_type, result.disciplines)
+        log.info("=== Router Final: type=%s  disciplines=%s", result.query_type, result.disciplines)
         return result
 # Дальнейшая обработка RouteResult происходит в pipeline.py, который принимает результат маршрутизации и решает, что делать дальше (например, если query_type=CLARIFY, то возвращает RAGResponse с кандидатами для уточнения).

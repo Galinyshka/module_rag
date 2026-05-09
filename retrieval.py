@@ -61,7 +61,7 @@ class RetrievalModule:
         points = result[0]
         chunks = [self._point_to_chunk(p, 1.0) for p in points]
         chunks.sort(key=lambda c: ALL_BLOCKS.index(c.block_type) if c.block_type in ALL_BLOCKS else 99)
-        log.info("Full document '%s': %d блоков", discipline, len(chunks))
+        log.info("=== Retrieval === Full document '%s': %d блоков", discipline, len(chunks))
         return chunks
 
     def _retrieve_single(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
@@ -175,20 +175,21 @@ class RetrievalModule:
                 children.append(self._point_to_chunk(point, score=0.0))
                     #existing_ids.add(str(point.id))
         
-        log.info("Parent retrieval: +%d родителей, +%d детей", len(parents), len(children))
-        log.info("Chunks before build_context: %s",
+        log.info("=== Retrieval === Parent retrieval: +%d родителей, +%d детей", len(parents), len(children))
+        log.info("=== Retrieval === Chunks before build_context: %s",
          [(c.discipline, c.block_name[:20]) for c in chunks])
         
         for p in parents:
-            log.info("PARENT BLOCK:\n%s\n", p.text)
+            log.debug("=== Retrieval === PARENT BLOCK:\n%s\n", p.text)
         for c in children:
-            log.info("CHILD BLOCK:\n%s\n", c.text[:200])
+            log.debug("=== Retrieval === CHILD BLOCK:\n%s\n", c.text[:200])
 
-        log.info("PARENT IDS: %s", parent_ids)
-        log.info("PARENTS: %s", [p.block_id for p in parents])
-        log.info("CHILDREN: %s", [c.block_id for c in children])
+        log.debug("=== Retrieval === PARENT IDS: %s", parent_ids)
+        log.debug("=== Retrieval === PARENTS: %s", [p.block_id for p in parents])
+        log.debug("=== Retrieval === CHILDREN: %s", [c.block_id for c in children])
         
         result = [*chunks, *parents, *children]
+        log.info("=== Retrieval === Total after parent retrieval: %d чанков", len(result))
 
         #Убираем дубликаты по block_id, сохраняя порядок (parents и children могут пересекаться)
         seen = set()
@@ -199,7 +200,7 @@ class RetrievalModule:
                 continue
             seen.add(key)
             unique.append(c)
-
+        log.info("=== Retrieval === Total after deduplication: %d чанков", len(unique))
         return unique
     
     # ------------------------------------------------------------------
@@ -213,7 +214,7 @@ class RetrievalModule:
         if expanded.hyde_text:
             queries.append(expanded.hyde_text)
         queries.extend(expanded.sub_queries)
-        log.info("Number of queries for retrieval: %d", len(queries))
+        log.info("=== Retrieval === Number of queries for retrieval: %d", len(queries))
         return queries
 
     def _multi_query_rrf(self, queries: list[str], qdrant_filter, top_k: int) -> list[RetrievedChunk]:
@@ -234,28 +235,28 @@ class RetrievalModule:
         scores: dict[str, float]          = {}
 
         for query in unique:
-            log.info("RRF search: query=%s", query)
+            log.info("=== Retrieval === RRF search: query=%s", query)
             # берем эмбединг запроса из кеша
             query_vec = self._embed_cached(query)
-            for chunk in self._rrf_search(query_vec, qdrant_filter, top_k):
+            for i, chunk in enumerate(self._rrf_search(query_vec, qdrant_filter, top_k)):
                 if chunk.block_id not in seen:
                     seen[chunk.block_id]   = chunk
                     scores[chunk.block_id] = chunk.score
                 else:
                     scores[chunk.block_id] = max(scores[chunk.block_id], chunk.score)
 
-                log.info("Chunk from RRF: id=%s, score=%.3f, discipline=%s, block=%s",
-                        chunk.block_id, chunk.score, chunk.discipline, chunk.block_name)
+                log.info("=== Retrieval === Chunk № %d: score=%.3f, discipline=%s, block=%s",
+                         i+1, chunk.score, chunk.discipline, chunk.block_name)
         
         chunks = self._sort_by_score(seen, scores)
-        log.info('RRF search: найдено %d уникальных чанков', len(chunks))
+        log.info("=== Retrieval === RRF search: найдено %d уникальных чанков", len(chunks))
 
         chunks = chunks[:top_k * len(unique)]
-        log.info('RRF search: после обрезки до top_k*кол-во_запросов (%d) чанков', len(chunks))
+        log.info("=== Retrieval === RRF search: после обрезки до top_k*кол-во_запросов (%d) чанков", len(chunks))
         
         if chunks:
             sc = [scores[chunk.block_id] for chunk in chunks]
-            log.info("  RRF scores (%d chunks): min=%.3f max=%.3f avg=%.3f",
+            log.info("=== Retrieval === RRF scores (%d chunks): min=%.3f max=%.3f avg=%.3f",
                     len(chunks), min(sc), max(sc), sum(sc)/len(sc))
         
         return chunks
@@ -295,7 +296,7 @@ class RetrievalModule:
             return chunks
         
         except Exception as exc:
-            log.exception("RRF недоступен (%s)", exc)
+            log.exception("=== Retrieval === RRF недоступен (%s)", exc)
 
 
     # ------------------------------------------------------------------

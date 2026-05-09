@@ -36,8 +36,8 @@ def _parse_json(text: str) -> dict:
         if not isinstance(data, dict):
             raise ValueError(f"Expected dict, got {type(data)}")
         return data
-    except Exception:
-        log.error("JSON parsing failed. Content: %r", text[:1500])
+    except Exception as exc:
+        log.error("=== Expander === JSON parsing failed. Content: %r. Error: %s", text[:2000], exc)
         raise
 
 class QueryExpander:
@@ -53,7 +53,10 @@ class QueryExpander:
         hyde_text = ""  
 
         if route.query_type == QueryType.MULTI_COMPARE or not expanded_flag:
-            log.info("Expander: MULTI_COMPARE — expansion пропущена")
+            if route.query_type == QueryType.MULTI_COMPARE:
+                log.info("=== Expander === (%s): - возвращаем без расширения", route.query_type)
+            else:
+                log.info("=== Expander === (%s): expanded_flag=False (первый проход) - возвращаем без расширения", route.query_type)
             return ExpandedQuery(
                 original     = query,
                 paraphrases  = [],
@@ -85,7 +88,8 @@ class QueryExpander:
 
             # логируем multi.relation c перефразированными подзапросами
             log.info(
-                "Expander (MULTI_RELATION): %d sub_expanded: %r",
+                "=== Expander === (%s): %d sub_expanded: %r",
+                route.query_type,
                 len(sub_expanded),
                 [(e.original, e.disciplines) for e in sub_expanded],
             )
@@ -114,10 +118,11 @@ class QueryExpander:
 
             # логируем остальные типы
             log.info(
-                "Expander:\n"
+                "=== Expander === (%s):\n"
                 "  paraphrases (%d): %r\n"
                 "  sub_queries: (%d): %r\n"
                 "  hyde_text (%d): %r\n",
+                route.query_type,
                 len(paraphrases),
                 paraphrases,
                 len(sub_queries),
@@ -145,8 +150,9 @@ class QueryExpander:
             max_tokens = 5000,
             messages   = [{"role": "user", "content": prompt}],
         )
-        log.debug("LLM response (raw): %r", resp)
-        return _parse_json(resp.choices[0].message.content)
+        raw_content = resp.choices[0].message.content
+        log.debug("=== Expander (call_json) === LLM raw content: %r", raw_content[:1000])
+        return _parse_json(raw_content)     
 
     def _call_text(self, prompt: str, max_tokens: int) -> str:
         '''Вызов LLM с данным промптом, возвращая текстовый ответ.'''
@@ -155,7 +161,7 @@ class QueryExpander:
             max_tokens = max_tokens,
             messages   = [{"role": "user", "content": prompt}],
         )
-        log.debug("LLM response (raw): %r", resp)
+        log.debug("=== Expander (call_text) === LLM response (raw): %r", resp)
         return resp.choices[0].message.content.strip()
 
 
@@ -166,24 +172,24 @@ class QueryExpander:
 
             prompt = PARAPHRASE_PROMPT.format(query=query, num_paraphrases=PARAPHRASES_COUNT)
             result = self._call_json(prompt)
-            log.debug("Parsed result type: %s, content: %r", type(result), result)
+            log.debug("=== Expander (paraphrase) === Parsed result type: %s, content: %r", type(result), result)
 
             if isinstance(result, str):
-                log.error("LLM returned raw string instead of JSON dict!")
+                log.error("=== Expander (paraphrase) === LLM returned raw string instead of JSON dict!")
                 return []
 
             paraphrases = result.get("paraphrases") or result.get("Paraphrases")
             if not isinstance(paraphrases, list):
-                log.warning("No valid 'paraphrases' list in result: %r", result)
+                log.warning("=== Expander (paraphrase) === No valid 'paraphrases' list in result: %r", result)
                 return []
 
             # Фильтруем пустые
             paraphrases = [p.strip() for p in paraphrases if p and isinstance(p, str)]
-            log.debug("Successfully got %d paraphrases", len(paraphrases))
+            log.debug("=== Expander (paraphrase) === Successfully got %d paraphrases", len(paraphrases))
             return paraphrases
 
         except Exception as exc:
-            log.exception("Paraphrase failed")  
+            log.exception("=== Expander (paraphrase) === Paraphrase failed")
             return []
 
     def _decompose_and_expand(self, query: str, disciplines: list[str], num_paraphrases: int) -> list[dict]:
@@ -200,14 +206,14 @@ class QueryExpander:
                 messages=[{"role": "user", "content": prompt}],
             )
             raw = resp.choices[0].message.content
-            log.debug("decompose_and_expand raw response: %r", raw)  
+            log.debug("=== Expander (decompose_and_expand) === decompose_and_expand raw response: %r", raw)  
             
             result = _parse_json(raw)
-            log.debug("decompose_and_expand parsed: %r", result)   
+            log.debug("=== Expander (decompose_and_expand) === decompose_and_expand parsed: %r", result)   
             
             return result.get("sub_queries") or []
         except Exception as exc:
-            log.exception("decompose_and_expand failed")  # exception вместо warning — покажет traceback
+            log.exception("=== Expander (decompose_and_expand) === decompose_and_expand failed") 
             return []
 
     def _hyde(self, query: str) -> str:
@@ -218,5 +224,5 @@ class QueryExpander:
                 max_tokens=LLM_MAX_TOKENS_HYDE,
             )
         except Exception as exc:
-            log.warning("HyDE failed: %s", exc)
+            log.warning("=== Expander (hyde) === HyDE failed: %s", exc)
             return ""
