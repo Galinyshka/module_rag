@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import time
 from expander      import QueryExpander
 from fact_extractor import FactExtractor
 from generation    import GenerationModule, build_context
@@ -8,6 +9,7 @@ from reranker      import Reranker
 from retrieval    import RetrievalModule
 from router        import Router
 from verification  import VerificationModule
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 log = logging.getLogger(__name__)
 
@@ -156,43 +158,42 @@ class RAGPipeline:
         
         sub_answers: list[tuple[str, str]] = []
         all_chunks:  list[RetrievedChunk]  = []
+        results = {}
 
+        def process_sub(sub_eq: ExpandedQuery):
+            t0 = time.perf_counter()
+            log.info("MULTI_RELATION sub START: '%s'", sub_eq.original)
+            answer, chunks, verified, _ = self._run_single(sub_eq.original, sub_eq)
+            log.info(
+                "MULTI_RELATION sub DONE: '%s' — %.1f с",
+                sub_eq.original, time.perf_counter() - t0
+            )
+            return sub_eq.original, answer, chunks
+
+        with ThreadPoolExecutor(max_workers=len(expanded.sub_expanded)) as executor:
+            futures = {
+                executor.submit(process_sub, sub_eq): sub_eq
+                for sub_eq in expanded.sub_expanded
+            }
+            for future in as_completed(futures):
+                original, answer, chunks = future.result()
+                results[original] = (answer, chunks)
+
+        # восстанавливаем порядок как в sub_expanded
         for sub_eq in expanded.sub_expanded:
-            log.info(
-                "MULTI_RELATION sub: '%s' [%s]",
-                sub_eq.original, sub_eq.disciplines,
-            )
-            sub_answer, sub_chunks, sub_verified, _ = self._run_single(
-                sub_eq.original, sub_eq
-            )
-            all_chunks.extend(sub_chunks)
-
-            if sub_answer == NO_DATA_MSG:
+            answer, chunks = results[sub_eq.original]
+            all_chunks.extend(chunks)
+            if answer != NO_DATA_MSG:
+                sub_answers.append((sub_eq.original, answer))
+                log.info("sub '%s': %d симв.", sub_eq.original, len(answer))
+            else:
                 log.warning("Нет данных для подзапроса: '%s'", sub_eq.original)
-                continue
-
-            log.info(
-                "sub '%s': verified=%s, %d симв.",
-                sub_eq.original, sub_verified.is_valid, len(sub_answer),
-            )
-            sub_answers.append((sub_eq.original, sub_answer))
 
         if not sub_answers:
-            return (
-                NO_DATA_MSG,
-                [],
-                VerificationResult(is_valid=False, note="нет ответов по подзапросам"),
-                False,
-            )
+            return NO_DATA_MSG, [], VerificationResult(is_valid=False, note="нет ответов по подзапросам"), False
 
-        final_answer = self._generation.generate_synthesis(query, sub_answers)
-        context      = self._generation.generate_compare(query, all_chunks)
-        verified     = self._verification.verify(query, final_answer, context, expanded.query_type)
-
-        log.info(
-            "MULTI_RELATION итог: %d/%d подзапросов отвечено, verified=%s",
-            len(sub_answers), len(expanded.sub_expanded), verified.is_valid,
-        )
+        final_answer, context = self._generation.generate_synthesis(query, sub_answers)
+        verified = self._verification.verify(query, final_answer, context, expanded.query_type)
         return final_answer, all_chunks, verified, False
     
     def _run_multi_compare(

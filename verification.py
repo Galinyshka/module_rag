@@ -34,7 +34,7 @@ class VerificationModule:
             
         template = (
             VERIFY_COMPARE_PROMPT
-            if query_type == QueryType.MULTI_COMPARE
+            if query_type == QueryType.MULTI_COMPARE or query_type == QueryType.MULTI_RELATION
             else VERIFY_PROMPT
         )
         prompt = template.format(query=query, context=context, answer=answer)
