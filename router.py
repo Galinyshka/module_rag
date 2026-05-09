@@ -7,6 +7,7 @@ from rapidfuzz import fuzz, process
 from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_FAST, LLM_MAX_TOKENS_FAST, RPD_NAMES, FUZZY_THRESHOLD, FUZZY_TOP_K
 from models import QueryType, RouteResult
 from prompts import (
+    PROMPT_CLASSIFY_MULTI,
     PROMPT_EXTRACT_QUERY_DISCIPLINE,
     PROMPT_EXTRACT_DISCIPLINES,
     PROMPT_CLASSIFY_SINGLE,
@@ -189,7 +190,14 @@ class Router:
             log.warning("classify_zero failed: %s", exc)
             return QueryType.IRRELEVANT
 
-
+    def _classify_multi(self, query: str) -> QueryType:
+        try:
+            data = _llm_call(self._client, PROMPT_CLASSIFY_MULTI.format(query=query))
+            return QueryType(data["query_type"])
+        except Exception as exc:
+            log.warning("classify_multi failed: %s", exc)
+            return QueryType.MULTI_RELATION  # safe fallback
+        
     def route(self, query: str) -> RouteResult:
         """ Главная функция маршрутизации."""
         try:
@@ -201,8 +209,8 @@ class Router:
                     disciplines = extraction.disciplines
                     n = len(disciplines)
                     if n > 1:
-                        # если дисциплин несколько — это multi.relation
-                        query_type = QueryType.MULTI_RELATION
+                        # если дисциплин несколько определяем multi.relation или multi.compare
+                        query_type = self._classify_multi(query)
                     else:
                         # если дисциплина одна — нужно понять, single.simple или single.global
                         query_type = self._classify_single(query) # может вернуть query_type: single.simple или single.global

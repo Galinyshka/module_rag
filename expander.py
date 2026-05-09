@@ -45,42 +45,65 @@ class QueryExpander:
     def __init__(self) -> None:
         self._client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
 
-    def expand(
-        self,
-        query: str,
-        route: RouteResult,
-        resolved_disciplines: list[str],
-    ) -> ExpandedQuery:
+    def expand(self, query: str, route: RouteResult, resolved_disciplines: list[str],) -> ExpandedQuery:
         
         sub_queries = []
-        sub_queries_expanded = []
+        sub_expanded = []
         paraphrases = []
         hyde_text = ""  
 
+        if route.query_type == QueryType.MULTI_COMPARE:
+            log.info("Expander: MULTI_COMPARE — expansion пропущена")
+            return ExpandedQuery(
+                original     = query,
+                paraphrases  = [],
+                sub_queries  = [],
+                disciplines  = resolved_disciplines,
+                query_type   = route.query_type,
+                hyde_text    = "",
+                sub_expanded = [],
+            )
+        
         if route.query_type == QueryType.MULTI_RELATION:
-            # для запросов типа multi.relation сначала делаем декомпозицию, а потом перефразируем каждую часть
-            sub_queries_expanded = self._decompose_and_expand(query, resolved_disciplines, PARAPHRASES_COUNT)
+            # для запросов типа multi.relation сначала делаем декомпозицию и перефразируем каждую часть
+            raw_sub_queries = self._decompose_and_expand(query, resolved_disciplines, PARAPHRASES_COUNT)
             
-            # для каждого подзапроса делаем перефразировку в количестве 3х вариантов
-            sub_queries = [sq["original"] for sq in sub_queries_expanded]
-            paraphrases = []
-            hyde_text = ""
-
+            # для каждого подзапроса создаём ExpandedQuery, используя discipline из декомпозиции и определяем тип как SINGLE_GLOBAL
+            sub_expanded = [
+                ExpandedQuery(
+                    original    = sq["original"],
+                    paraphrases = sq.get("paraphrases", []),
+                    sub_queries = [],
+                    disciplines = [sq["discipline"]],
+                    query_type  = QueryType.SINGLE_GLOBAL,
+                    hyde_text   = "",
+                    sub_expanded= [],
+                )
+                for sq in raw_sub_queries
+                if sq.get("original") and sq.get("discipline")
+            ]
 
             # логируем multi.relation c перефразированными подзапросами
             log.info(
-                "Expander (MULTI_RELATION):\n"
-                "  sub_queries (%d): %r\n"
-                "  expanded sub-queries: %r",
-                len(sub_queries),
-                sub_queries,
-                sub_queries_expanded
+                "Expander (MULTI_RELATION): %d sub_expanded: %r",
+                len(sub_expanded),
+                [(e.original, e.disciplines) for e in sub_expanded],
+            )
+
+            return ExpandedQuery(
+                original      = query,
+                paraphrases   = [],
+                sub_queries   = [e.original for e in sub_expanded],  # для логов/отладки
+                disciplines   = resolved_disciplines,
+                query_type    = route.query_type,
+                hyde_text     = "",
+                sub_expanded  = sub_expanded,
             )
             
         else:
             paraphrases = self._paraphrase(query)
             sub_queries = []
-            sub_queries_expanded = []
+            sub_expanded = []
             
             # HyDE для одиночных запросов, где он может дать наибольший прирост
             hyde_text = (
@@ -109,7 +132,7 @@ class QueryExpander:
             sub_queries=sub_queries,
             disciplines=resolved_disciplines,
             query_type=route.query_type,
-            sub_queries_expanded=sub_queries_expanded,  
+            sub_expanded=sub_expanded,  
         )
     
 

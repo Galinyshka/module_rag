@@ -3,10 +3,10 @@ import logging
 from openai import OpenAI
 from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_MAIN, LLM_MAX_TOKENS_MAIN
 from models import ExpandedQuery, RetrievedChunk
-from prompts import GENERATE_PROMPTS
+from prompts import COMPARE_PROMPT, GENERATE_PROMPTS, SYNTHESIS_PROMPT
 
 log = logging.getLogger(__name__)
-MAX_CONTEXT_CHARS = 50_000
+MAX_CONTEXT_CHARS = 100000
 
 
 def build_context(chunks: list[RetrievedChunk]) -> str:
@@ -56,13 +56,36 @@ class GenerationModule:
             context = context[:MAX_CONTEXT_CHARS]
         log.info("Context: %s", context[:500].replace("\n", "\\n") + ("..." if len(context) > 500 else ""))
         log.info("Generation: тип=%s, контекст=%d симв.", expanded.query_type, len(context))
-        return self._call(template.format(query=query, context=context))
+        return self._call(template.format(query=query, context=context)), context
 
     def generate_from_context(self, query: str, context: str, query_type_value: str) -> str:
         template = GENERATE_PROMPTS.get(query_type_value, GENERATE_PROMPTS["single.simple"])
         log.info("Generation (fallback): контекст=%d симв.", len(context))
-        return self._call(template.format(query=query, context=context[:MAX_CONTEXT_CHARS]))
+        return self._call(template.format(query=query, context=context)), context
 
+    def generate_synthesis(self, query: str,
+        sub_answers: list[tuple[str, str]],  # (sub_query, answer)
+    ) -> str:
+        
+        parts = [
+            f"Аспект: {sub_q}\nОтвет: {ans}"
+            for sub_q, ans in sub_answers
+        ]
+        context  = "\n\n---\n\n".join(parts)
+        combined = "\n\n---\n\n".join(parts)
+        prompt = SYNTHESIS_PROMPT.format(query=query, sub_answers=combined)
+        log.info("Synthesis: %d частичных ответов, промпт %d симв.", len(sub_answers), len(prompt))
+        return self._call(prompt), context
+
+    def generate_compare(self, query: str, chunks: list[RetrievedChunk],) -> str:
+        context = build_context(chunks)
+        if len(context) > MAX_CONTEXT_CHARS:
+            context = context[:MAX_CONTEXT_CHARS]
+        prompt = COMPARE_PROMPT.format(query=query, context=context)
+        log.info("Compare: %d дисциплин, контекст=%d симв.", 
+                 len({c.discipline for c in chunks}), len(context))
+        return self._call(prompt), context
+    
     def _call(self, prompt: str) -> str:
         log.info("Final prompt: %s", prompt[:1000].replace("\n", "\\n") + ("..." if len(prompt) > 500 else ""))
         resp = self._client.chat.completions.create(

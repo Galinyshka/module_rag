@@ -7,6 +7,7 @@ class QueryType(str, Enum):
     SINGLE_SIMPLE  = "single.simple"
     SINGLE_GLOBAL  = "single.global"
     MULTI_RELATION = "multi.relation"
+    MULTI_COMPARE  = "multi.compare"  
     MULTI_GLOBAL   = "multi.global"
     NOT_FOUND      = "not_found"      
     IRRELEVANT     = "irrelevant"  
@@ -33,11 +34,11 @@ class ExpandedQuery:
 class ExpandedQuery:
     original: str
     paraphrases: list[str]
-    sub_queries: list[str]
+    sub_queries: list[str]       
     disciplines: list[str]
     query_type: QueryType
     hyde_text: str = ""
-    sub_queries_expanded: list[dict[str, Any]] = field(default_factory=list)
+    sub_expanded: list[ExpandedQuery] = field(default_factory=list)  
 
 @dataclass
 class RetrievedChunk:

@@ -6,8 +6,8 @@ from config import (
     LLM_BASE_URL, LLM_API_KEY,
     LLM_MODEL_VERIFY, LLM_MAX_TOKENS_VERIFY,
 )
-from models import RetrievedChunk, VerificationResult
-from prompts import VERIFY_PROMPT
+from models import QueryType, RetrievedChunk, VerificationResult
+from prompts import VERIFY_COMPARE_PROMPT, VERIFY_PROMPT
 
 log = logging.getLogger(__name__)
 MAX_CONTEXT_CHARS = 100_000
@@ -26,25 +26,18 @@ class VerificationModule:
     def __init__(self) -> None:
         self._client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
 
-    def verify(self, query: str, answer: str, chunks: list[RetrievedChunk]) -> VerificationResult:
-        # группируем по дисциплинам с равным лимитом
-        by_disc: dict[str, list[RetrievedChunk]] = {}
-        for c in chunks:
-            by_disc.setdefault(c.discipline, []).append(c)
-
-        n = len(by_disc) or 1
-        per_disc_limit = 80_000 // n
-
-        parts = []
-        for disc, disc_chunks in by_disc.items():
-            section = f"=== {disc} ===\n"
-            section += "\n\n".join(f"[{c.block_name}]\n{c.text}" for c in disc_chunks)
-            parts.append(section[:per_disc_limit])
-
-        context = "\n\n".join(parts)
-   
-
-        prompt = VERIFY_PROMPT.format(query=query, context=context, answer=answer)
+    def verify(self, query: str, answer: str, context: str, query_type: QueryType) -> VerificationResult:
+    
+        if len(context) > 80_000:
+            log.warning("Verification: context обрезан %d → 80000 симв.", len(context))
+            context = context[:80_000]
+            
+        template = (
+            VERIFY_COMPARE_PROMPT
+            if query_type == QueryType.MULTI_COMPARE
+            else VERIFY_PROMPT
+        )
+        prompt = template.format(query=query, context=context, answer=answer)
         try:
             resp = self._client.chat.completions.create(
                 model      = LLM_MODEL_VERIFY,
