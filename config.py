@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 import json
 import pathlib
 import re
+
 load_dotenv()
 # ---------------------------------------------------------------------------
 # LLM
@@ -116,3 +117,4 @@ ALL_BLOCKS = [
     "assessment_fund", "literature",
     "online_resources", "other_sections", "other_section",
 ] # полный список типов блоков для сортировки полного документа
+

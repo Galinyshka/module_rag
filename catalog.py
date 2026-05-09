@@ -227,7 +227,7 @@ class DisciplineCatalog:
                     logger.warning("Пропущен файл %s: нет поля discipline", f.name)
             except Exception as e:
                 logger.error("Ошибка при загрузке %s: %s", f.name, e)
-
+        logger.info("=== DisciplineCatalog === загрузка из %s завершена. Всего карточек: %d", path, len(self._cards))
     # ------------------------------------------------------------------
     # Базовые свойства
     # ------------------------------------------------------------------

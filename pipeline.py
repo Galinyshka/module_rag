@@ -8,6 +8,7 @@ from reranker      import Reranker
 from retrieval    import RetrievalModule
 from router        import Router, RouteResult
 from verification  import VerificationModule
+from catalog import DisciplineCatalog
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 log = logging.getLogger(__name__)
@@ -19,14 +20,19 @@ NOT_FOUND_MSG  = "Указанная дисциплина не найдена в
 IRRELEVANT_MSG = "Этот вопрос не относится к учебным программам (РПД). Я могу помочь только с вопросами по дисциплинам."
 SINGLE_TYPES = {QueryType.SINGLE_SIMPLE, QueryType.SINGLE_GLOBAL}
 
+MULTI_GLOBAL_TYPES = {
+    QueryType.MULTI_GLOBAL_CATALOG,
+    QueryType.MULTI_GLOBAL_COMPETENCY_EXACT,
+    QueryType.MULTI_GLOBAL_COMPETENCY_SEMANTIC,
+    QueryType.MULTI_GLOBAL_TOPIC,
+    QueryType.MULTI_GLOBAL_SEMANTIC,
+}
 
 class RAGPipeline:
 
-    def __init__(
-        self,
-        qdrant_url: str = "http://localhost:6333",
-        collection: str = "discipline_chunks",
-    ) -> None:
+    def __init__(self, qdrant_url: str = "http://localhost:6333", collection: str = "discipline_chunks",
+                 ) -> None:
+        
         log.info("=== Pipeline === Инициализация RAG-пайплайна ...")
         self._router        = Router()
         self._expander      = QueryExpander()
@@ -34,6 +40,7 @@ class RAGPipeline:
         self._reranker      = Reranker()
         self._generation    = GenerationModule()
         self._verification  = VerificationModule()
+        self._catalog = DisciplineCatalog("test_data")
         log.info("=== Pipeline === Пайплайн инициализирован.")
 
     def ask(self, query: str) -> RAGResponse:
@@ -85,18 +92,23 @@ class RAGPipeline:
             disciplines = route.disciplines
         )
 
-    def _run(
-        self, query: str, route: RouteResult,
-    ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
-        expanded = self._expander.expand(query, route, route.disciplines, expanded_flag=False)
+    def _run(self, query: str, route: RouteResult,
+             ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
+        
+        # MULTI_GLOBAL не нуждается в expander
+        if route.query_type in MULTI_GLOBAL_TYPES:
+            return self._run_multi_global(query, route)
 
+        expanded = self._expander.expand(query, route, route.disciplines, expanded_flag=False)
         if route.query_type == QueryType.MULTI_RELATION:
             return self._run_multi_relation(query, route, expanded)
         if route.query_type == QueryType.MULTI_COMPARE:
             return self._run_multi_compare(query, expanded)
         return self._run_single(query, route, expanded)
 
-    def _run_single(self, query: str, route: RouteResult, expanded: ExpandedQuery) -> tuple[str, list[RetrievedChunk], VerificationResult]:
+    def _run_single(self, query: str, route: RouteResult, expanded: ExpandedQuery
+                    ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
+        
         # Шаг 1: original only (expanded_flag=False → нет парафразов)
         chunks, verified, answer = self._generate_and_verify(query, expanded, step="1/3")
         if verified.is_valid:
@@ -118,40 +130,8 @@ class RAGPipeline:
         return answer, chunks, verified
 
 
-    def _generate_and_verify(
-        self, query: str, expanded: ExpandedQuery, *, step: str = "",
-    ) -> tuple[list[RetrievedChunk], VerificationResult, str]:
-        chunks = self._retrieve_chunks(query, expanded)
-
-        if not chunks:
-            log.warning("=== Pipeline === Чанки не найдены.")
-            note = "нет чанков"
-            return [], VerificationResult(is_valid=False, note=f"[{step}] {note}" if step else note), NO_DATA_MSG
-
-        answer, context = self._generation.generate(query, chunks, expanded)
-        verified = self._verification.verify(query, answer, context, expanded.query_type)
-
-        verified.note = f"[{step}] {verified.note}" if step else verified.note
-        log.info("=== Pipeline === Генерация и верификация: valid=%s, %d чанков, note=%s",
-                 verified.is_valid, len(chunks), verified.note)
-        return chunks, verified, answer
-    
-    def _retrieve_chunks(
-        self, query: str, expanded: ExpandedQuery,
-    ) -> list[RetrievedChunk]:
-        chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
-        if expanded.query_type == QueryType.MULTI_GLOBAL:
-            chunks = self._reranker.rerank_per_discipline(query, chunks, expanded.disciplines)
-        else:
-            chunks = self._reranker.rerank(query, chunks)
-        if expanded.query_type in {QueryType.SINGLE_GLOBAL, QueryType.MULTI_GLOBAL}:
-            chunks = self._retrieval._enrich_with_parents(chunks)
-        return chunks
-
-
-    def _run_multi_relation(
-        self, query: str, route: RouteResult, expanded: ExpandedQuery,
-    ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
+    def _run_multi_relation(self, query: str, route: RouteResult, expanded: ExpandedQuery,
+                            ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
 
         # Шаг 1: если sub_expanded пуст (expanded_flag=False) — это нормально, расширяем
         if not expanded.sub_expanded:
@@ -203,9 +183,8 @@ class RAGPipeline:
         verified = self._verification.verify(query, final_answer, context, expanded.query_type)
         return final_answer, all_chunks, verified
 
-    def _run_multi_compare(
-        self, query: str, expanded: ExpandedQuery,
-    ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
+    def _run_multi_compare(self, query: str, expanded: ExpandedQuery,
+                           ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
         """Загружает полные документы всех дисциплин и генерирует сравнение."""
         all_chunks: list[RetrievedChunk] = []
 
@@ -229,6 +208,152 @@ class RAGPipeline:
         return answer, all_chunks, verified
 
 
+    def _run_multi_global(self, query: str, route: RouteResult,
+                          ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
+        """
+        Обработчик всех MULTI_GLOBAL подтипов.
+        Каталожные подтипы (catalog, competency_*, topic) — без Qdrant.
+        global_semantic — через Qdrant с группировкой по дисциплинам.
+        """
+        query_type = route.query_type
+        global_entity     = route.global_entity   # код компетенции / термин / "" для catalog
+
+        log.info("=== Pipeline === (%s): global_entity=%r", query_type, global_entity)
+
+        # --- catalog: перечень всех дисциплин ---
+        if query_type == QueryType.MULTI_GLOBAL_CATALOG:
+            context = self._catalog.as_llm_context(mode="compact")
+            answer, ctx = self._generation.generate_from_context(
+                query, context, query_type.value
+            )
+            verified = self._verification.verify(query, answer, ctx, query_type)
+            return answer, [], verified
+
+        # --- competency_exact: точный поиск по коду ---
+        if query_type == QueryType.MULTI_GLOBAL_COMPETENCY_EXACT:
+            cards = self._catalog.filter_by_competency_code(global_entity)
+            if not cards:
+                msg = f"Компетенция «{global_entity}» не найдена ни в одной дисциплине."
+                return msg, [], VerificationResult(is_valid=True, note="нет совпадений по коду")
+
+            context = self._catalog.cards_as_llm_context(cards, mode="full")
+            answer, ctx = self._generation.generate_from_context(
+                query, context, query_type.value
+            )
+            verified = self._verification.verify(query, answer, ctx, query_type)
+
+            # детерминированная проверка поверх LLM-верификации
+            ok, hallucinated = self._catalog.verify_competency_answer(answer, global_entity)
+            if not ok:
+                verified.is_valid = False
+                verified.note += f" | hallucinated disciplines: {hallucinated}"
+
+            return answer, [], verified
+
+        # --- competency_semantic: семантический поиск по смыслу компетенции ---
+        if query_type == QueryType.MULTI_GLOBAL_COMPETENCY_SEMANTIC:
+            context = self._catalog.as_llm_context(mode="full")
+            answer, ctx = self._generation.generate_from_context(
+                query, context, query_type.value
+            )
+            verified = self._verification.verify(query, answer, ctx, query_type)
+            return answer, [], verified
+
+        # --- topic: поиск по содержанию тем ---
+        if query_type == QueryType.MULTI_GLOBAL_TOPIC:
+            # full включает topic_content — содержание тем, а не только заголовки
+            context = self._catalog.as_llm_context(mode="full")
+            answer, ctx = self._generation.generate_from_context(
+                query, context, query_type.value
+            )
+            verified = self._verification.verify(query, answer, ctx, query_type)
+            return answer, [], verified
+
+        # --- global_semantic: поиск по всему корпусу через Qdrant ---
+        if query_type == QueryType.MULTI_GLOBAL_SEMANTIC:
+            return self._run_multi_global_semantic(query, route)
+
+        log.warning("=== Pipeline === Неизвестный MULTI_GLOBAL подтип: %s", query_type)
+        return NO_DATA_MSG, [], VerificationResult(is_valid=False, note="unknown subtype")
+
+
+    def _run_multi_global_semantic(self, query: str, route: RouteResult,
+                                   ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
+        """
+        Семантический поиск по всему корпусу.
+        Ищет без фильтра по дисциплине, группирует результаты,
+        берёт top-3 чанка на дисциплину.
+        """
+        # ExpandedQuery без дисциплин → RetrievalModule ищет по всему корпусу
+        expanded = ExpandedQuery(
+            original   = query,
+            query_type = route.query_type,
+            disciplines = [],       # нет фильтра по дисциплине
+            paraphrases = [],
+            hyde_text   = None,
+            sub_queries = [],
+        )
+
+
+        chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
+        if not chunks:
+            log.warning("=== Pipeline === MULTI_GLOBAL_SEMANTIC: чанков не найдено")
+            return NO_DATA_MSG, [], VerificationResult(is_valid=False, note="нет чанков")
+
+        chunks = self._reranker.rerank(query, chunks)
+
+        # берём top-3 на дисциплину для полноты покрытия
+        grouped_chunks = self._group_chunks_by_discipline(chunks, top_k=3)
+        log.info(
+            "=== Pipeline === MULTI_GLOBAL_SEMANTIC: %d дисциплин с релевантными чанками",
+            len(grouped_chunks),
+        )
+
+        # flatten обратно для генерации
+        selected = [c for disc_chunks in grouped_chunks.values() for c in disc_chunks]
+
+        answer, ctx = self._generation.generate_from_context(
+            query,
+            self._chunks_to_context(selected),
+            route.query_type.value,
+        )
+        verified = self._verification.verify(query, answer, ctx, route.query_type)
+        return answer, selected, verified
+
+    def _group_chunks_by_discipline(self, chunks: list[RetrievedChunk], top_k: int = 3,
+                                    ) -> dict[str, list[RetrievedChunk]]:
+        """
+        Группирует чанки по дисциплине, оставляя top_k лучших на дисциплину.
+        Порядок чанков сохраняется (они уже отсортированы по score).
+        """
+        grouped: dict[str, list[RetrievedChunk]] = {}
+        for chunk in chunks:
+            discipline = chunk.discipline   # поле в RetrievedChunk
+            if discipline not in grouped:
+                grouped[discipline] = []
+            if len(grouped[discipline]) < top_k:
+                grouped[discipline].append(chunk)
+        return grouped
+
+
+    def _chunks_to_context(self, chunks: list[RetrievedChunk]) -> str:
+        """
+        Форматирует чанки в контекст для generate_from_context.
+        Группирует по дисциплине для читаемости.
+        """
+        by_discipline: dict[str, list[str]] = {}
+        for chunk in chunks:
+            disc = chunk.discipline
+            if disc not in by_discipline:
+                by_discipline[disc] = []
+            by_discipline[disc].append(chunk.text)
+
+        parts = []
+        for disc, texts in by_discipline.items():
+            block = "\n".join(f"  - {t}" for t in texts)
+            parts.append(f"[{disc}]\n{block}")
+        return "\n\n".join(parts)
+
     def _single_fulltext_fallback(self, query: str, expanded: ExpandedQuery, prev_verified: VerificationResult):
         """Загружает полный документ и регенерирует ответ."""
         if not expanded.disciplines:
@@ -248,3 +373,33 @@ class RAGPipeline:
         verified = self._verification.verify(query, answer, context, expanded.query_type)
         log.info("=== Pipeline === Single fallback: valid=%s", verified.is_valid)
         return answer, full_chunks, verified
+
+    def _generate_and_verify(self, query: str, expanded: ExpandedQuery, *, step: str = "",
+                             ) -> tuple[list[RetrievedChunk], VerificationResult, str]:
+        
+        chunks = self._retrieve_chunks(query, expanded)
+
+        if not chunks:
+            log.warning("=== Pipeline === Чанки не найдены.")
+            note = "нет чанков"
+            return [], VerificationResult(is_valid=False, note=f"[{step}] {note}" if step else note), NO_DATA_MSG
+
+        answer, context = self._generation.generate(query, chunks, expanded)
+        verified = self._verification.verify(query, answer, context, expanded.query_type)
+
+        verified.note = f"[{step}] {verified.note}" if step else verified.note
+        log.info("=== Pipeline === Генерация и верификация: valid=%s, %d чанков, note=%s",
+                 verified.is_valid, len(chunks), verified.note)
+        return chunks, verified, answer
+    
+    def _retrieve_chunks(self, query: str, expanded: ExpandedQuery,
+                         ) -> list[RetrievedChunk]:
+        
+        chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
+        if expanded.query_type == QueryType.MULTI_GLOBAL:
+            chunks = self._reranker.rerank_per_discipline(query, chunks, expanded.disciplines)
+        else:
+            chunks = self._reranker.rerank(query, chunks)
+        if expanded.query_type in {QueryType.SINGLE_GLOBAL, QueryType.MULTI_GLOBAL}:
+            chunks = self._retrieval._enrich_with_parents(chunks)
+        return chunks
