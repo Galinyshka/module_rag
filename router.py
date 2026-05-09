@@ -12,11 +12,19 @@ from prompts import (
     PROMPT_EXTRACT_DISCIPLINES,
     PROMPT_CLASSIFY_SINGLE,
     PROMPT_CLASSIFY_ZERO,
+    PROMPT_CLASSIFY_GLOBAL_SUBTYPE,
 )
 
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+_GLOBAL_SUBTYPE_MAP = {
+    "catalog":               QueryType.MULTI_GLOBAL_CATALOG,
+    "competency_exact":      QueryType.MULTI_GLOBAL_COMPETENCY_EXACT,
+    "competency_semantic":   QueryType.MULTI_GLOBAL_COMPETENCY_SEMANTIC,
+    "topic_search":          QueryType.MULTI_GLOBAL_TOPIC,
+    "global_semantic":       QueryType.MULTI_GLOBAL_SEMANTIC,
+}
 
 # ---------------------------------------------------------------------------
 # Вспомогательные функции
@@ -147,12 +155,16 @@ class Router:
 
         # Шаг 1.3: анализируем результат LLMа и возвращаем RouteResult
         if status == "found":
-            # если LLM уверенно нашёл дисциплины, проверяем их на точное совпадение и возвращаем
+            # если LLM понял что термин из названия, но intent глобальный — не считаем found
+            if data.get("intent") == "about_topic":
+                log.info("=== Router === intent=about_topic despite fuzzy match, treating as zero")
+                return None  # → уйдёт в classify_zero → MULTI_GLOBAL
+
             raw = data.get("disciplines") or []
             disciplines = [d for d in raw if d in self._rpd_names]
             if disciplines:
                 return RouteResult(
-                    query_type=QueryType.CLARIFY,   # временный статус, который мы потом уточним в route()
+                    query_type=QueryType.CLARIFY,
                     disciplines=disciplines,
                     message="found",
                 )
@@ -197,7 +209,27 @@ class Router:
         except Exception as exc:
             log.warning("classify_multi failed: %s", exc)
             return QueryType.MULTI_RELATION  # safe fallback
-        
+
+    def _classify_global_subtype(self, query: str) -> tuple[str, str]:
+        """
+        Определяет подтип MULTI_GLOBAL-запроса и извлекает ключевой термин.
+ 
+        Returns:
+            subtype: "catalog" | "competency_exact" | "competency_semantic"
+                     | "topic_search" | "global_semantic"
+            entity:  извлечённый термин (код компетенции, название темы,
+                     ключевое слово) или "" для catalog
+        """
+        try:
+            data = _llm_call(self._client, PROMPT_CLASSIFY_GLOBAL_SUBTYPE.format(query=query))
+            subtype = data.get("subtype", "global_semantic")
+            entity = data.get("entity", "")
+            query_type = _GLOBAL_SUBTYPE_MAP.get(subtype, QueryType.MULTI_GLOBAL_SEMANTIC)
+            return query_type, entity
+        except Exception as exc:
+            log.warning("classify_global_subtype failed: %s", exc)
+            return QueryType.MULTI_GLOBAL_SEMANTIC, ""
+
     def route(self, query: str) -> RouteResult:
         """ Главная функция маршрутизации."""
         try:
@@ -218,11 +250,20 @@ class Router:
                 else:
                     # если message != "found", значит это clarify, возвращаем как есть
                     result = extraction
-
             else:
                 # случай None из extract_disciplines — значит LLM не нашёл дисциплин, нужно классифицировать запрос как zero
                 query_type = self._classify_zero(query) # может вернуть query_type: multi.global, not_found или irrelevant
-                result = RouteResult(query_type=query_type, disciplines=[]) 
+                if query_type == QueryType.MULTI_GLOBAL:
+                    # определяем подтип и ключевой термин
+                    global_query_type, global_entity = self._classify_global_subtype(query)
+                    log.info("=== Router === MULTI_GLOBAL subtype=%s entity=%r", global_query_type, global_entity)
+                    result = RouteResult(
+                        query_type=global_query_type,   # уточнённый подтип для multi.global
+                        disciplines=[],
+                        global_entity=global_entity,
+                    )
+                else:
+                    result = RouteResult(query_type=query_type, disciplines=[])                
 
         except Exception as exc:
             log.warning("=== Router === Router fallback: %s", exc)

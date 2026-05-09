@@ -650,7 +650,8 @@ def main() -> None:
         description     = "Оценка качества RAG-системы",
         formatter_class = argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("dataset",          help="JSON-файл с датасетом")
+    parser.add_argument("dataset", nargs="?", default=None, help="JSON-файл с датасетом")
+    parser.add_argument("--ask", type=str, default=None, help="Оценить один вопрос без dataset.json")
     parser.add_argument("--output",         default=None,
                         help="Куда сохранить результаты (default: dataset_eval.json)")
     parser.add_argument("--qdrant",         default="http://localhost:6333")
@@ -663,8 +664,16 @@ def main() -> None:
                         help="Только router accuracy + дисциплины, без LLM-судьи")
     args = parser.parse_args()
 
-    with open(args.dataset, encoding="utf-8") as f:
-        dataset = json.load(f)
+    if args.ask:
+        dataset = [{
+            "question": args.ask,
+            "ground_truth": "",
+            "router_type": "",
+            "ground_discipline": [],
+        }]
+    else:
+        with open(args.dataset, encoding="utf-8") as f:
+            dataset = json.load(f)
 
     if args.limit:
         dataset = dataset[:args.limit]
