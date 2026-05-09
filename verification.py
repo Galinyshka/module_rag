@@ -10,9 +10,6 @@ from models import QueryType, RetrievedChunk, VerificationResult
 from prompts import VERIFY_COMPARE_PROMPT, VERIFY_PROMPT
 
 log = logging.getLogger(__name__)
-MAX_CONTEXT_CHARS = 100_000
-
-
 
 def _parse_json(text: str) -> dict:
     """Парсит JSON из ответа модели, убирая markdown-блоки если они есть."""

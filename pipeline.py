@@ -41,7 +41,6 @@ class RAGPipeline:
     def ask(self, query: str) -> RAGResponse:
         log.info("=== Запрос: %s", query)
 
-
         route = self._router.route(query)
 
         if route.query_type == QueryType.CLARIFY:
@@ -83,7 +82,6 @@ class RAGPipeline:
 
         expanded = self._expander.expand(query, route, route.disciplines)
 
-        # 4. Поиск → реранкинг → извлечение/генерация → верификация
         answer, chunks, verified, fact_extracted = self._run(query, expanded)
 
         return RAGResponse(
