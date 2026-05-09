@@ -45,14 +45,14 @@ class QueryExpander:
     def __init__(self) -> None:
         self._client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
 
-    def expand(self, query: str, route: RouteResult, resolved_disciplines: list[str],) -> ExpandedQuery:
+    def expand(self, query: str, route: RouteResult, resolved_disciplines: list[str], expanded_flag = True) -> ExpandedQuery:
         
         sub_queries = []
         sub_expanded = []
         paraphrases = []
         hyde_text = ""  
 
-        if route.query_type == QueryType.MULTI_COMPARE:
+        if route.query_type == QueryType.MULTI_COMPARE or not expanded_flag:
             log.info("Expander: MULTI_COMPARE — expansion пропущена")
             return ExpandedQuery(
                 original     = query,
@@ -72,7 +72,7 @@ class QueryExpander:
             sub_expanded = [
                 ExpandedQuery(
                     original    = sq["original"],
-                    paraphrases = sq.get("paraphrases", []),
+                    paraphrases = [],
                     sub_queries = [],
                     disciplines = [sq["discipline"]],
                     query_type  = QueryType.SINGLE_GLOBAL,
@@ -132,7 +132,8 @@ class QueryExpander:
             sub_queries=sub_queries,
             disciplines=resolved_disciplines,
             query_type=route.query_type,
-            sub_expanded=sub_expanded,  
+            sub_expanded=sub_expanded,
+            hyde_text=hyde_text,  
         )
     
 
