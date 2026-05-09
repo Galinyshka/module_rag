@@ -80,7 +80,7 @@ class RAGPipeline:
   
         log.info("Router определил дисциплины: %s", route.disciplines)
 
-        expanded = self._expander.expand(query, route, route.disciplines)
+        #expanded = self._expander.expand(query, route, route.disciplines) - перенесен в run
 
         answer, chunks, verified, fact_extracted = self._run(query, route)
 
@@ -101,7 +101,7 @@ class RAGPipeline:
         if route.query_type == QueryType.MULTI_RELATION:
             expanded = self._expander.expand(query, route, route.disciplines)
             return self._run_multi_relation(query, expanded)
-        elif expanded.query_type == QueryType.MULTI_COMPARE:
+        elif route.query_type == QueryType.MULTI_COMPARE:
             expanded = self._expander.expand(query, route, route.disciplines)
             return self._run_multi_compare(query, expanded)
         else:
