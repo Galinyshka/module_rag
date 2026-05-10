@@ -14,9 +14,6 @@ class QueryType(str, Enum):
 
     MULTI_GLOBAL       = "multi.global"
     MULTI_GLOBAL_CATALOG            = "multi.global.catalog"
-    MULTI_GLOBAL_COMPETENCY_EXACT   = "multi.global.competency_exact"
-    MULTI_GLOBAL_COMPETENCY_SEMANTIC = "multi.global.competency_semantic"
-    MULTI_GLOBAL_TOPIC              = "multi.global.topic"
     MULTI_GLOBAL_SEMANTIC           = "multi.global.semantic"
 
 

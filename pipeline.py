@@ -22,9 +22,6 @@ SINGLE_TYPES = {QueryType.SINGLE_SIMPLE, QueryType.SINGLE_GLOBAL}
 
 MULTI_GLOBAL_TYPES = {
     QueryType.MULTI_GLOBAL_CATALOG,
-    QueryType.MULTI_GLOBAL_COMPETENCY_EXACT,
-    QueryType.MULTI_GLOBAL_COMPETENCY_SEMANTIC,
-    QueryType.MULTI_GLOBAL_TOPIC,
     QueryType.MULTI_GLOBAL_SEMANTIC,
 }
 
@@ -215,66 +212,20 @@ class RAGPipeline:
         Каталожные подтипы (catalog, competency_*, topic) — без Qdrant.
         global_semantic — через Qdrant с группировкой по дисциплинам.
         """
-        query_type = route.query_type
-        global_entity = route.global_entity   # код компетенции / термин / "" для catalog
-
-        log.info("=== Pipeline === (%s): global_entity=%r", query_type, global_entity)
-
-        # --- catalog: перечень всех дисциплин ---
-        if query_type == QueryType.MULTI_GLOBAL_CATALOG:
-            context = self._catalog.as_llm_context(mode="compact")
-            answer, ctx = self._generation.generate_from_context(
-                query, context, query_type.value
-            )
-            verified = self._verification.verify(query, answer, ctx, query_type)
-            return answer, [], verified
-
-        # --- competency_exact: точный поиск по коду ---
-        if query_type == QueryType.MULTI_GLOBAL_COMPETENCY_EXACT:
-            cards = self._catalog.filter_by_competency_code(global_entity)
-            if not cards:
-                msg = f"Компетенция «{global_entity}» не найдена ни в одной дисциплине."
-                return msg, [], VerificationResult(is_valid=True, note="нет совпадений по коду")
-
-            context = self._catalog.cards_as_llm_context(cards, mode="full")
-            answer, ctx = self._generation.generate_from_context(
-                query, context, query_type.value
-            )
-            verified = self._verification.verify(query, answer, ctx, query_type)
-
-            # детерминированная проверка поверх LLM-верификации
-            ok, hallucinated = self._catalog.verify_competency_answer(answer, global_entity)
-            if not ok:
-                verified.is_valid = False
-                verified.note += f" | hallucinated disciplines: {hallucinated}"
-
-            return answer, [], verified
-
-        # --- competency_semantic: семантический поиск по смыслу компетенции ---
-        if query_type == QueryType.MULTI_GLOBAL_COMPETENCY_SEMANTIC:
+        if route.query_type == QueryType.MULTI_GLOBAL_CATALOG:
             context = self._catalog.as_llm_context(mode="full")
             answer, ctx = self._generation.generate_from_context(
-                query, context, query_type.value
+                query, context, route.query_type.value
             )
-            verified = self._verification.verify(query, answer, ctx, query_type)
+            found, hallucinated = self._catalog.extract_and_verify_disciplines(answer)
+            verified = VerificationResult(
+                is_valid=not hallucinated,
+                note="ok" if not hallucinated else f"галлюцинации: {hallucinated}"
+            )
             return answer, [], verified
 
-        # --- topic: поиск по содержанию тем ---
-        if query_type == QueryType.MULTI_GLOBAL_TOPIC:
-            # full включает topic_content — содержание тем, а не только заголовки
-            context = self._catalog.as_llm_context(mode="full")
-            answer, ctx = self._generation.generate_from_context(
-                query, context, query_type.value
-            )
-            verified = self._verification.verify(query, answer, ctx, query_type)
-            return answer, [], verified
-
-        # --- global_semantic: поиск по всему корпусу через Qdrant ---
-        if query_type == QueryType.MULTI_GLOBAL_SEMANTIC:
+        if route.query_type == QueryType.MULTI_GLOBAL_SEMANTIC:
             return self._run_multi_global_semantic(query, route)
-
-        log.warning("=== Pipeline === Неизвестный MULTI_GLOBAL подтип: %s", query_type)
-        return NO_DATA_MSG, [], VerificationResult(is_valid=False, note="unknown subtype")
 
 
     def _run_multi_global_semantic(self, query: str, route: RouteResult,
