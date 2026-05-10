@@ -19,12 +19,22 @@ VERIFY_PROMPT
 # Router
 # ---------------------------------------------------------------------------
 
+
+
 PROMPT_EXTRACT_QUERY_DISCIPLINE = """
-Из запроса пользователя извлеки фрагмент, который похож на название учебной дисциплины.
+Из запроса пользователя извлеки фрагмент, который является названием учебной дисциплины.
+
+Название дисциплины — это курс, который читается в университете: «Линейная алгебра»,
+«Машинное обучение», «Рекомендательные системы и коллаборативная фильтрация».
+
+НЕ являются названиями дисциплин:
+- Темы, концепции, алгоритмы внутри курса: SVD, коллаборативная фильтрация, нейронные сети
+- Датасеты, инструменты, библиотеки: MovieLens, Docker, PyTorch, Git
+- Вопросы про весь корпус: «какие дисциплины», «где изучается», «в каких курсах»
 
 Правила:
-- Верни только предполагаемое название — без лишних слов ("по дисциплине", "курс", "предмет", номера семестров, вопросов и т.д.)
-- Если в запросе несколько возможных названий — верни все.
+- Верни только предполагаемое название — без лишних слов («по дисциплине», «курс», «предмет», номера семестров и т.д.)
+- Если в запросе несколько названий дисциплин — верни все.
 - Если ничего похожего на название дисциплины нет — верни пустой список.
 - Не исправляй и не дополняй — верни ровно то, что написал пользователь.
 
@@ -32,11 +42,23 @@ PROMPT_EXTRACT_QUERY_DISCIPLINE = """
   "Сколько часов лекций по линейной алгебре?"
   → {{"names": ["линейная алгебра"]}}
 
-  "Примерные вопросы к контрольной по дисциплине Алгоритмы и структура данных в Python для 1 семестра"
+  "Примерные вопросы к контрольной по Алгоритмы и структура данных в Python"
   → {{"names": ["Алгоритмы и структура данных в Python"]}}
 
   "Сравни машинное обучение и глубокое обучение"
   → {{"names": ["машинное обучение", "глубокое обучение"]}}
+
+  "Где в РПД упоминается MovieLens?"
+  → {{"names": []}}
+
+  "В каких курсах изучается коллаборативная фильтрация?"
+  → {{"names": []}}
+
+  "Где используется Docker?"
+  → {{"names": []}}
+
+  "Какие дисциплины есть?"
+  → {{"names": []}}
 
   "Какая погода сегодня?"
   → {{"names": []}}
@@ -405,12 +427,7 @@ GENERATE_MULTI_GLOBAL = """\
 
 Ответ:"""
 
-GENERATE_PROMPTS = {
-    "single.simple":  GENERATE_SINGLE_SIMPLE,
-    "single.global":  GENERATE_SINGLE_GLOBAL,
-    "multi.relation": GENERATE_MULTI_RELATION,
-    "multi.global":   GENERATE_MULTI_GLOBAL,
-}
+
 
 
 SYNTHESIS_PROMPT = """
@@ -621,6 +638,17 @@ PROMPT_MULTI_GLOBAL_SEMANTIC = """
 # Используется в GenerationModule.generate_from_context
 # ---------------------------------------------------------------------------
 MULTI_GLOBAL_PROMPTS: dict[str, str] = {
+    "multi.global.catalog":              PROMPT_MULTI_GLOBAL_CATALOG,
+    "multi.global.competency_exact":     PROMPT_MULTI_GLOBAL_COMPETENCY_EXACT,
+    "multi.global.competency_semantic":  PROMPT_MULTI_GLOBAL_COMPETENCY_SEMANTIC,
+    "multi.global.topic":                PROMPT_MULTI_GLOBAL_TOPIC,
+    "multi.global.semantic":             PROMPT_MULTI_GLOBAL_SEMANTIC,
+}
+
+GENERATE_PROMPTS = {
+    "single.simple":  GENERATE_SINGLE_SIMPLE,
+    "single.global":  GENERATE_SINGLE_GLOBAL,
+    "multi.relation": GENERATE_MULTI_RELATION,
     "multi.global.catalog":              PROMPT_MULTI_GLOBAL_CATALOG,
     "multi.global.competency_exact":     PROMPT_MULTI_GLOBAL_COMPETENCY_EXACT,
     "multi.global.competency_semantic":  PROMPT_MULTI_GLOBAL_COMPETENCY_SEMANTIC,

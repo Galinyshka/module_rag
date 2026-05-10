@@ -12,6 +12,7 @@ from config import (
     EMBED_MODEL, QDRANT_URL, QDRANT_COLLECTION,
     VEC_QUESTIONS, VEC_SUMMARY,
     TOP_K_SINGLE,
+    TOP_K_GLOBAL,
     TOP_K_STAGE1,
     TOP_K_PER_DISC,
     MAX_DISCIPLINES_MULTI,
@@ -36,17 +37,17 @@ class RetrievalModule:
         self._qdrant     = QdrantClient(url=qdrant_url)
         self._collection = collection
 
+    
     def retrieve(self, expanded: ExpandedQuery, reranker=None) -> list[RetrievedChunk]:
-        '''Каждый тип запроса требует своей стратегии поиска и реранкинга.'''
+        """Каждый тип запроса требует своей стратегии поиска."""
         query_type = expanded.query_type
-
-        if query_type == QueryType.MULTI_GLOBAL:
-            chunks = self._retrieve_multi_global(expanded)
-        elif query_type == QueryType.MULTI_RELATION:
-            chunks = self._retrieve_multi_relation(expanded, reranker)
-        else:
-            chunks = self._retrieve_single(expanded)
-        return chunks
+    
+        if query_type == QueryType.MULTI_GLOBAL_SEMANTIC:
+            return self._retrieve_multi_global_semantic(expanded)
+        if query_type == QueryType.MULTI_RELATION:
+            return self._retrieve_multi_relation(expanded, reranker)
+        # SINGLE_SIMPLE, SINGLE_GLOBAL, MULTI_COMPARE и все остальные
+        return self._retrieve_single(expanded)
 
     def get_full_document(self, discipline: str) -> list[RetrievedChunk]:
         """Собирает всю дисциплину для подачи в модель генерации."""
@@ -73,50 +74,30 @@ class RetrievalModule:
         )
         return chunks
 
+    def _retrieve_multi_global_semantic(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
+        """
+        Поиск по всему корпусу без фильтра по дисциплине.
     
-    '''
-    def _retrieve_multi_global(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
+        Особенности:
+        - qdrant_filter=None → ищем по всей коллекции
+        - top_k=TOP_K_GLOBAL → достаточно, чтобы покрыть все ~50 дисциплин
+        - без _enrich_with_parents → не раздуваем результат
+        - группировка по дисциплинам происходит в pipeline (_group_chunks_by_discipline)
         """
-        Stage 1 — обзорные блоки по всему корпусу → выявляем дисциплины.
-        Stage 2 — точный RRF-поиск по выявленным дисциплинам.
-        """
-        queries = self._queries(expanded)
-
-        stage1 = self._multi_query_rrf(
-            queries,
-            Filter(must=[FieldCondition(
-                key="block_type", match=MatchAny(any=OVERVIEW_BLOCKS)
-            )]),
-            TOP_K_STAGE1,
+        chunks = self._multi_query_rrf(
+            queries      = self._queries(expanded),
+            qdrant_filter = None,           # нет фильтра → весь корпус
+            top_k        = TOP_K_GLOBAL,
         )
-        relevant = list(dict.fromkeys(
-            c.discipline for c in stage1 if c.discipline
-        ))[:MAX_DISCIPLINES_MULTI]
-        log.info("multi.global Stage 1: %d дисциплин", len(relevant))
-
-        if not relevant:
-            return stage1
-
-        stage2 = self._multi_query_rrf(
-            queries, self._discipline_filter(relevant), TOP_K_PER_DISC
+    
+        log.info(
+            "=== Retrieval === MULTI_GLOBAL_SEMANTIC: %d чанков из %d дисциплин",
+            len(chunks),
+            len({c.discipline for c in chunks}),
         )
+        return chunks
 
-        merged: dict[str, RetrievedChunk] = {}
-        scores: dict[str, float]          = {}
-        for c in [*stage1, *stage2]:
-            if c.block_id not in merged:
-                merged[c.block_id] = c
-                scores[c.block_id] = c.score
-            else:
-                scores[c.block_id] = max(scores[c.block_id], c.score)
-
-        log.info("multi.global Stage 2: итого %d чанков", len(merged))
-        return self._sort_by_score(merged, scores)
-
-    # ------------------------------------------------------------------
-    # Parent retrieval
-    # ------------------------------------------------------------------
-    '''
+       
     def _enrich_with_parents(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
         """ Подтягивает родительские блоки и всех их детей"""
         existing_ids = {c.block_id for c in chunks}

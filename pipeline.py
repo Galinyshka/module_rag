@@ -216,7 +216,7 @@ class RAGPipeline:
         global_semantic — через Qdrant с группировкой по дисциплинам.
         """
         query_type = route.query_type
-        global_entity     = route.global_entity   # код компетенции / термин / "" для catalog
+        global_entity = route.global_entity   # код компетенции / термин / "" для catalog
 
         log.info("=== Pipeline === (%s): global_entity=%r", query_type, global_entity)
 
@@ -294,28 +294,17 @@ class RAGPipeline:
             sub_queries = [],
         )
 
-
-        chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
+        chunks = self._retrieval.retrieve(expanded, reranker=None)
         if not chunks:
-            log.warning("=== Pipeline === MULTI_GLOBAL_SEMANTIC: чанков не найдено")
             return NO_DATA_MSG, [], VerificationResult(is_valid=False, note="нет чанков")
 
-        chunks = self._reranker.rerank(query, chunks)
+        grouped = self._group_chunks_by_discipline(chunks, top_k=3)
+        log.info("=== Pipeline === MULTI_GLOBAL_SEMANTIC: %d дисциплин", len(grouped))
+        selected = [c for disc_chunks in grouped.values() for c in disc_chunks]
 
-        # берём top-3 на дисциплину для полноты покрытия
-        grouped_chunks = self._group_chunks_by_discipline(chunks, top_k=3)
-        log.info(
-            "=== Pipeline === MULTI_GLOBAL_SEMANTIC: %d дисциплин с релевантными чанками",
-            len(grouped_chunks),
-        )
-
-        # flatten обратно для генерации
-        selected = [c for disc_chunks in grouped_chunks.values() for c in disc_chunks]
-
+        context = build_context(selected)
         answer, ctx = self._generation.generate_from_context(
-            query,
-            self._chunks_to_context(selected),
-            route.query_type.value,
+            query, context, route.query_type.value
         )
         verified = self._verification.verify(query, answer, ctx, route.query_type)
         return answer, selected, verified
@@ -334,25 +323,6 @@ class RAGPipeline:
             if len(grouped[discipline]) < top_k:
                 grouped[discipline].append(chunk)
         return grouped
-
-
-    def _chunks_to_context(self, chunks: list[RetrievedChunk]) -> str:
-        """
-        Форматирует чанки в контекст для generate_from_context.
-        Группирует по дисциплине для читаемости.
-        """
-        by_discipline: dict[str, list[str]] = {}
-        for chunk in chunks:
-            disc = chunk.discipline
-            if disc not in by_discipline:
-                by_discipline[disc] = []
-            by_discipline[disc].append(chunk.text)
-
-        parts = []
-        for disc, texts in by_discipline.items():
-            block = "\n".join(f"  - {t}" for t in texts)
-            parts.append(f"[{disc}]\n{block}")
-        return "\n\n".join(parts)
 
     def _single_fulltext_fallback(self, query: str, expanded: ExpandedQuery, prev_verified: VerificationResult):
         """Загружает полный документ и регенерирует ответ."""
