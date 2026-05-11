@@ -107,14 +107,14 @@ class RAGPipeline:
     def _run_single(self, query: str, route: RouteResult, expanded: ExpandedQuery
                     ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
         
-        # Шаг 1: original only (expanded_flag=False: нет перефразов)
+        # Шаг 1: original only (expanded_flag=False: нет перефразов)   
         chunks, verified, answer = self._generate_and_verify(query, expanded, step="1/3")
         if verified.is_valid:
             return answer, chunks, verified
 
         # Шаг 2: с парафразами (expanded_flag=True)
         expanded_v2 = self._expander.expand(query, route, route.disciplines, expanded_flag=True)
-        chunks, verified, answer = self._generate_and_verify(query, expanded_v2, step="2/3")
+        chunks, verified, answer = self._generate_and_verify(query, expanded_v2, step="2/3")   
         if verified.is_valid:
             return answer, chunks, verified
 
@@ -291,6 +291,9 @@ class RAGPipeline:
         
         chunks = self._retrieve_chunks(query, expanded)
 
+        if expanded.query_type == QueryType.SINGLE_SIMPLE:
+            chunks = [chunks[0]] # берем только лучший чанк  
+            
         if not chunks:
             log.warning("=== Pipeline === Чанки не найдены.")
             note = "нет чанков"

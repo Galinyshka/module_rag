@@ -57,7 +57,7 @@ class Reranker:
 
 
         return reranked_chunks
-
+'''
     def rerank_per_discipline(self, query: str, chunks: list[RetrievedChunk],
                             disciplines: list[str]) -> list[RetrievedChunk]:
         """
@@ -110,9 +110,9 @@ class Reranker:
 
             result.extend(top)
 
-        return result
+        return result'''
     
-    def rerank_single_query(self, query: str, chunks: list[RetrievedChunk],
+'''    def rerank_single_query(self, query: str, chunks: list[RetrievedChunk],
                             top_k: int = 3) -> list[RetrievedChunk]:
         if not chunks:
             return chunks
@@ -139,7 +139,7 @@ class Reranker:
             log.debug("  RRF-top добавлен принудительно: %s (ce_score=%.2f)",
                     rrf_top.block_name[:50], rrf_top.score)
 
-        return result
+        return result'''
     
 
 '''
