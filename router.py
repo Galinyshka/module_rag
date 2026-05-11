@@ -48,8 +48,10 @@ def _llm_call(client: OpenAI, prompt: str) -> dict:
 def _extract_query_names(client: OpenAI, query: str) -> list[str]:
     """ LLM вытаскивает сырые названия из запроса. """
     prompt = PROMPT_EXTRACT_QUERY_DISCIPLINE.format(query=query)
+    log.info("=== Router === Extract names prompt: %s", prompt)
     try:
         data = _llm_call(client, prompt)
+        log.info("=== Router === raw llm: %s", data)
         names = data.get("names") or []
         return [n.lower().strip() for n in names if n.strip()]
     except Exception as exc:

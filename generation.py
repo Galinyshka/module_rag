@@ -47,20 +47,24 @@ class GenerationModule:
     def __init__(self) -> None:
         self._client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
 
-    def generate(self, query: str, chunks: list[RetrievedChunk], expanded: ExpandedQuery) -> str:
-        template = GENERATE_PROMPTS.get(expanded.query_type.value,
-                                        GENERATE_PROMPTS["single.simple"])
+    def generate(self, query: str, chunks: list[RetrievedChunk], expanded: ExpandedQuery) -> tuple[str, str]:
         context = build_context(chunks)
-        if len(context) > MAX_CONTEXT_CHARS:
-            log.warning("=== Generation === context обрезан с %d до %d симв.", len(context), MAX_CONTEXT_CHARS)
-            context = context[:MAX_CONTEXT_CHARS]
-        log.debug("=== Generation === Context: %s", context[:500].replace("\n", "\\n") + ("..." if len(context) > 500 else ""))
-        log.info("=== Generation === тип=%s, контекст=%d симв.", expanded.query_type, len(context))
-        return self._call(template.format(query=query, context=context)), context
+        log.info("=== Generation === (generate): query_type=%s, query='%s', context=%d симв., %d чанков",
+                 expanded.query_type.value, query, len(context), len(chunks))
+        return self.generate_from_context(
+            query=query,
+            context=context,
+            query_type_value=expanded.query_type.value
+        )        
 
     def generate_from_context(self, query: str, context: str, query_type_value: str) -> str:
         template = GENERATE_PROMPTS.get(query_type_value, GENERATE_PROMPTS["single.simple"])
-        log.info("=== Generation === (fallback): контекст=%d симв.", len(context))
+
+        if len(context) > MAX_CONTEXT_CHARS:
+            log.warning("=== Generation === context обрезан с %d до %d симв.", len(context), MAX_CONTEXT_CHARS)
+            context = context[:MAX_CONTEXT_CHARS]
+
+        log.info("=== Generation === контекст=%d симв.", len(context))
         return self._call(template.format(query=query, context=context)), context
 
     def generate_synthesis(self, query: str,
@@ -80,6 +84,7 @@ class GenerationModule:
     def generate_compare(self, query: str, chunks: list[RetrievedChunk],) -> str:
         context = build_context(chunks)
         if len(context) > MAX_CONTEXT_CHARS:
+            log.warning("=== Generation === Compare context обрезан с %d до %d симв.", len(context), MAX_CONTEXT_CHARS)
             context = context[:MAX_CONTEXT_CHARS]
         prompt = COMPARE_PROMPT.format(query=query, context=context)
         log.info("=== Generation === Compare: %d дисциплин, контекст=%d симв.", 
