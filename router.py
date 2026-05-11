@@ -166,6 +166,7 @@ class Router:
                     query_type=QueryType.CLARIFY,
                     disciplines=disciplines,
                     message="found",
+                    query_names=extracted_names,  # сохраняем для дальнейшего использования в Expander, чтобы удалять из запроса при необходимости
                 )
     
         elif status == "clarify":
@@ -244,7 +245,7 @@ class Router:
                     else:
                         # если дисциплина одна — нужно понять, single.simple или single.global
                         query_type = self._classify_single(query) # может вернуть query_type: single.simple или single.global
-                    result = RouteResult(query_type=query_type, disciplines=disciplines)
+                    result = RouteResult(query_type=query_type, disciplines=disciplines, query_names=extraction.query_names)
                 else:
                     # если message != "found", значит это clarify, возвращаем как есть
                     result = extraction

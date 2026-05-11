@@ -25,6 +25,9 @@ class Reranker:
 
         pairs  = [(query, c.text) for c in chunks]
         scores = self._model.predict(pairs)
+        log.debug("Reranker single query: raw scores: %s", " ".join(f"{s:.2f}" for s in scores))
+        scores = [float(s)*0.9 + float(c.score) * 0.1 for s, c in zip(scores, chunks)]  # комбинируем с косинусным score для стабильности (можно регулировать веса)
+        log.debug("Reranker single query: combined scores: %s", " ".join(f"{s:.2f}" for s in scores))
 
         ranked = sorted(
             zip(chunks, scores),
@@ -34,8 +37,9 @@ class Reranker:
 
         reranked_chunks = []
         for chunk, score in ranked[:RERANKER_TOP_K]:
-            chunk.score = float(score)   # заменяем косинусный score на reranker score
-            reranked_chunks.append(chunk)
+            if score > 0.01:
+                chunk.score = float(score)   # заменяем косинусный score на reranker score
+                reranked_chunks.append(chunk)
 
         log.info("Reranker: %d -> %d чанков (top score=%.3f)",
                  len(chunks), len(reranked_chunks), reranked_chunks[0].score if reranked_chunks else 0)
@@ -115,6 +119,9 @@ class Reranker:
 
         pairs = [(query, c.text) for c in chunks]
         scores = self._model.predict(pairs)
+        log.debug("Reranker single query: raw scores: %s", " ".join(f"{s:.2f}" for s in scores))
+        scores = [float(s)*0.8 + float(c.score) * 0.2 for s, c in zip(scores, chunks)]  # комбинируем с косинусным score для стабильности (можно регулировать веса)
+        log.debug("Reranker single query: combined scores: %s", " ".join(f"{s:.2f}" for s in scores))
         score_map = {c.block_id: float(s) for c, s in zip(chunks, scores)}
 
         # топ по cross-encoder

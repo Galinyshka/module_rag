@@ -22,7 +22,8 @@ class RouteResult:
     query_type:  QueryType
     disciplines: list[str]
     message:     str = ""
-    global_entity:      str = "" 
+    global_entity:      str = ""
+    query_names: list[str] = field(default_factory=list)  # для хранения извлечённых из запроса названий дисциплин, чтобы при необходимости удалять их из текста запроса при расширении 
 
 
 @dataclass
