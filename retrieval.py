@@ -44,9 +44,9 @@ class RetrievalModule:
     
         if query_type == QueryType.MULTI_GLOBAL_SEMANTIC:
             return self._retrieve_multi_global_semantic(expanded)
-        if query_type == QueryType.MULTI_RELATION:
-            return self._retrieve_multi_relation(expanded, reranker)
-        # SINGLE_SIMPLE, SINGLE_GLOBAL, MULTI_COMPARE и все остальные
+        #if query_type == QueryType.MULTI_RELATION:
+        #   return self._retrieve_multi_relation(expanded, reranker)
+        # SINGLE_SIMPLE, SINGLE_GLOBAL и подзапросы MULTI_RELATION (как SINGLE_GLOBAL)
         return self._retrieve_single(expanded)
 
     def get_full_document(self, discipline: str) -> list[RetrievedChunk]:

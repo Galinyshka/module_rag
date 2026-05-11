@@ -212,14 +212,13 @@ class Router:
         Определяет подтип MULTI_GLOBAL-запроса и извлекает ключевой термин.
  
         Returns:
-            subtype: "catalog" | "competency_exact" | "competency_semantic"
-                     | "topic_search" | "global_semantic"
+            subtype: "catalog" | "semantic"
             entity:  извлечённый термин (код компетенции, название темы,
                      ключевое слово) или "" для catalog
         """
         try:
             data = _llm_call(self._client, PROMPT_CLASSIFY_GLOBAL_SUBTYPE.format(query=query))
-            subtype = data.get("subtype", "global_semantic")
+            subtype = data.get("subtype", "semantic")
             entity = data.get("entity", "")
             query_type = _GLOBAL_SUBTYPE_MAP.get(subtype, QueryType.MULTI_GLOBAL_SEMANTIC)
             return query_type, entity

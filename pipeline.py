@@ -97,6 +97,7 @@ class RAGPipeline:
             return self._run_multi_global(query, route)
 
         expanded = self._expander.expand(query, route, route.disciplines, expanded_flag=False)
+
         if route.query_type == QueryType.MULTI_RELATION:
             return self._run_multi_relation(query, route, expanded)
         if route.query_type == QueryType.MULTI_COMPARE:
@@ -106,7 +107,7 @@ class RAGPipeline:
     def _run_single(self, query: str, route: RouteResult, expanded: ExpandedQuery
                     ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
         
-        # Шаг 1: original only (expanded_flag=False → нет парафразов)
+        # Шаг 1: original only (expanded_flag=False: нет перефразов)
         chunks, verified, answer = self._generate_and_verify(query, expanded, step="1/3")
         if verified.is_valid:
             return answer, chunks, verified
@@ -207,21 +208,14 @@ class RAGPipeline:
 
     def _run_multi_global(self, query: str, route: RouteResult,
                           ) -> tuple[str, list[RetrievedChunk], VerificationResult]:
-        """
-        Обработчик всех MULTI_GLOBAL подтипов.
-        Каталожные подтипы (catalog, competency_*, topic) — без Qdrant.
-        global_semantic — через Qdrant с группировкой по дисциплинам.
-        """
+        """ Обработчик multi.global. Catalog - через контекст из каталога, Semantic - через семантический поиск по всему корпусу."""
+        
         if route.query_type == QueryType.MULTI_GLOBAL_CATALOG:
             context = self._catalog.as_llm_context(mode="full")
             answer, ctx = self._generation.generate_from_context(
                 query, context, route.query_type.value
             )
-            found, hallucinated = self._catalog.extract_and_verify_disciplines(answer)
-            verified = VerificationResult(
-                is_valid=not hallucinated,
-                note="ok" if not hallucinated else f"галлюцинации: {hallucinated}"
-            )
+            verified = self._verification.verify(query, answer, ctx, route.query_type)
             return answer, [], verified
 
         if route.query_type == QueryType.MULTI_GLOBAL_SEMANTIC:
@@ -312,8 +306,15 @@ class RAGPipeline:
         log.info("=== Pipeline === Генерация и верификация: valid=%s, %d чанков, note=%s",
                  verified.is_valid, len(chunks), verified.note)
         return chunks, verified, answer
-    
-    def _retrieve_chunks(self, query: str, expanded: ExpandedQuery,
+
+    def _retrieve_chunks(self, query: str, expanded: ExpandedQuery) -> list[RetrievedChunk]:
+        chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
+        chunks = self._reranker.rerank(query, chunks)
+        if expanded.query_type == QueryType.SINGLE_GLOBAL:
+            chunks = self._retrieval._enrich_with_parents(chunks)
+        return chunks
+
+'''    def _retrieve_chunks(self, query: str, expanded: ExpandedQuery,
                          ) -> list[RetrievedChunk]:
         
         chunks = self._retrieval.retrieve(expanded, reranker=self._reranker)
@@ -323,4 +324,4 @@ class RAGPipeline:
             chunks = self._reranker.rerank(query, chunks)
         if expanded.query_type in {QueryType.SINGLE_GLOBAL, QueryType.MULTI_GLOBAL}:
             chunks = self._retrieval._enrich_with_parents(chunks)
-        return chunks
+        return chunks'''

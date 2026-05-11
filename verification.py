@@ -7,7 +7,7 @@ from config import (
     LLM_MODEL_VERIFY, LLM_MAX_TOKENS_VERIFY,
 )
 from models import QueryType, RetrievedChunk, VerificationResult
-from prompts import VERIFY_COMPARE_PROMPT, VERIFY_PROMPT
+from prompts import VERIFY_PROMPTS
 
 log = logging.getLogger(__name__)
 
@@ -34,29 +34,36 @@ class VerificationModule:
             log.warning("=== Verification === context обрезан %d → 80000 симв.", len(context))
             context = context[:80_000]
             
-        template = (
-            VERIFY_COMPARE_PROMPT
-            if query_type == QueryType.MULTI_COMPARE or query_type == QueryType.MULTI_RELATION
-            else VERIFY_PROMPT
-        )
+        if query_type == QueryType.SINGLE_SIMPLE:
+            template = VERIFY_PROMPTS.get("single.simple")
+        elif query_type == QueryType.SINGLE_GLOBAL:
+            template = VERIFY_PROMPTS.get("single.global")  
+        elif query_type == QueryType.MULTI_RELATION:
+            template = VERIFY_PROMPTS.get("multi.relation")
+        elif query_type == QueryType.MULTI_COMPARE:
+            template = VERIFY_PROMPTS.get("multi.compare")
+        elif query_type in {QueryType.MULTI_GLOBAL_CATALOG, 
+                            QueryType.MULTI_GLOBAL_SEMANTIC}:
+            template = VERIFY_PROMPTS.get("multi.global")
+        else:
+            template = VERIFY_PROMPTS.get("single.global")  # safe fallback
+
         prompt = template.format(query=query, context=context, answer=answer)
+        log.info("=== Verification === query_type: %s, query: %s", query_type, query)
+        log.info("=== Verification === prompt length: %d", len(prompt))
+        log.info("=== Verification === prompt: %s", prompt[:500])  
+        log.info("=== Verification === answer: %s", answer[:500])
         try:
             resp = self._client.chat.completions.create(
-                model      = LLM_MODEL_VERIFY,
-                max_tokens = LLM_MAX_TOKENS_VERIFY,
-                messages   = [{"role": "user", "content": prompt}],
+                model=LLM_MODEL_VERIFY,
+                max_tokens=LLM_MAX_TOKENS_VERIFY,
+                messages=[{"role": "user", "content": prompt}],
             )
-            raw_content = resp.choices[0].message.content
-            log.debug("=== Verification === raw LLM response: %r", raw_content)
-            
-            data   = _parse_json(raw_content)
-            result = VerificationResult(
-                is_valid = bool(data.get("is_valid", True)),
-                retry    = bool(data.get("retry", False)),
-                note     = data.get("note", ""),
+            data = _parse_json(resp.choices[0].message.content)
+            return VerificationResult(
+                is_valid=bool(data.get("is_valid", True)),
+                note=data.get("note", ""),
             )
         except Exception as exc:
             log.warning("=== Verification === parse error: %s", exc)
-            result = VerificationResult(is_valid=True, note=f"parse error: {exc}")
-
-        return result
+            return VerificationResult(is_valid=True, note=f"parse error: {exc}")
