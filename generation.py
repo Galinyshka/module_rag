@@ -10,6 +10,8 @@ MAX_CONTEXT_CHARS = 100000
 
 
 def build_context(chunks: list[RetrievedChunk]) -> str:
+    '''Строит контекст для генерации, группируя чанки по дисциплинам и обрезая при необходимости.'''
+
     by_discipline: dict[str, list[RetrievedChunk]] = {}
     for c in chunks:
         by_discipline.setdefault(c.discipline, []).append(c)
@@ -47,49 +49,87 @@ class GenerationModule:
     def __init__(self) -> None:
         self._client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
 
-    def generate(self, query: str, chunks: list[RetrievedChunk], expanded: ExpandedQuery) -> tuple[str, str]:
+    def generate(self, query: str, chunks: list[RetrievedChunk], expanded: ExpandedQuery,
+                 ) -> tuple[str, str]:
+        '''Генерация с использовнием контекста из чанков'''
+
         context = build_context(chunks)
-        log.info("=== Generation === (generate): query_type=%s, query='%s', context=%d симв., %d чанков",
-                 expanded.query_type.value, query, len(context), len(chunks))
-        return self.generate_from_context(
-            query=query,
+
+        template = GENERATE_PROMPTS.get(
+            expanded.query_type.value,
+            GENERATE_PROMPTS["single.global"]  # safe fallback
+        )
+
+        prompt = template.format(query=query,context=context)
+
+        return self._generate_with_prompt(
+            prompt=prompt,
             context=context,
-            query_type_value=expanded.query_type.value
-        )        
+            label=f"generate:{expanded.query_type.value}",
+        )
 
-    def generate_from_context(self, query: str, context: str, query_type_value: str) -> str:
-        template = GENERATE_PROMPTS.get(query_type_value, GENERATE_PROMPTS["single.simple"])
+    def generate_from_context(self, query: str, context: str, query_type_value: str,
+                              ) -> tuple[str, str]:
+        '''Генерация сразу из готового контекста'''
 
-        if len(context) > MAX_CONTEXT_CHARS:
-            log.warning("=== Generation === context обрезан с %d до %d симв.", len(context), MAX_CONTEXT_CHARS)
-            context = context[:MAX_CONTEXT_CHARS]
+        template = GENERATE_PROMPTS.get(
+            query_type_value,
+            GENERATE_PROMPTS["single.global"]  # safe fallback
+        )
 
-        log.info("=== Generation === контекст=%d симв.", len(context))
-        return self._call(template.format(query=query, context=context)), context
+        prompt = template.format(query=query,context=context)
 
-    def generate_synthesis(self, query: str,
-        sub_answers: list[tuple[str, str]],  # (sub_query, answer)
-    ) -> str:
-        
+        return self._generate_with_prompt(
+            prompt=prompt,
+            context=context,
+            label=f"context:{query_type_value}",
+        )
+
+    def generate_synthesis(self, query: str, sub_answers: list[tuple[str, str]],
+                           ) -> tuple[str, str]:
+        '''Генерация синтеза из нескольких подответов (multi.relation)'''
+
         parts = [
             f"Аспект: {sub_q}\nОтвет: {ans}"
             for sub_q, ans in sub_answers
         ]
-        context  = "\n\n---\n\n".join(parts)
-        combined = "\n\n---\n\n".join(parts)
-        prompt = SYNTHESIS_PROMPT.format(query=query, sub_answers=combined)
-        log.info("=== Generation === Synthesis: %d частичных ответов, промпт %d симв.", len(sub_answers), len(prompt))
-        return self._call(prompt), context
 
-    def generate_compare(self, query: str, chunks: list[RetrievedChunk],) -> str:
-        context = build_context(chunks)
-        if len(context) > MAX_CONTEXT_CHARS:
-            log.warning("=== Generation === Compare context обрезан с %d до %d симв.", len(context), MAX_CONTEXT_CHARS)
+        context = "\n\n---\n\n".join(parts)
+
+        prompt = SYNTHESIS_PROMPT.format(query=query, sub_answers=context)
+
+        return self._generate_with_prompt(
+            prompt=prompt,
+            context=context,
+            label="synthesis",
+        )
+
+    def _generate_with_prompt(self, *, prompt: str, context: str, label: str,
+                              ) -> tuple[str, str]:
+        '''Вызывает LLM с данным промптом и контекстом, логирует длины и обрезает контекст при необходимости'''
+
+        original_len = len(context)
+
+        if original_len > MAX_CONTEXT_CHARS:
+            log.warning(
+                "=== Generation === (%s) context truncated: %d -> %d",
+                label,
+                original_len,
+                MAX_CONTEXT_CHARS,
+            )
+
             context = context[:MAX_CONTEXT_CHARS]
-        prompt = COMPARE_PROMPT.format(query=query, context=context)
-        log.info("=== Generation === Compare: %d дисциплин, контекст=%d симв.", 
-                 len({c.discipline for c in chunks}), len(context))
-        return self._call(prompt), context
+
+        log.info(
+            "=== Generation === (%s) context=%d chars, prompt=%d chars",
+            label,
+            len(context),
+            len(prompt),
+        )
+
+        answer = self._call(prompt)
+
+        return answer, context
     
     def _call(self, prompt: str) -> str:
         log.debug("=== Generation === Final prompt: %s", prompt[:1000].replace("\n", "\\n") + ("..." if len(prompt) > 500 else ""))

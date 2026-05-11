@@ -197,7 +197,7 @@ class RAGPipeline:
         if not all_chunks:
             return NO_DATA_MSG, [], VerificationResult(is_valid=False, note="документы не найдены")
 
-        answer, context = self._generation.generate_compare(query, all_chunks)
+        answer, context = self._generation.generate(query, all_chunks, expanded)
         verified = self._verification.verify(query, answer, context, expanded.query_type)
         log.info(
             "=== Pipeline === MULTI_COMPARE итог: %d дисциплин, verified=%s",
