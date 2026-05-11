@@ -45,12 +45,19 @@ class QueryExpander:
     def __init__(self) -> None:
         self._client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
 
-    def expand(self, query: str, route: RouteResult, resolved_disciplines: list[str], expanded_flag = True) -> ExpandedQuery:
+    def expand(self, query: str, route: RouteResult, resolved_disciplines: list[str], expanded_flag = True, query_without_names = True) -> ExpandedQuery:
         
         sub_queries = []
         sub_expanded = []
         paraphrases = []
         hyde_text = ""  
+
+        if query_without_names and route.query_names:
+            # удаляем из запроса названия дисциплин, чтобы не мешали расширению
+            for name in route.query_names:
+                query = query.replace(name, "")
+            query = query.strip()
+            log.info("=== Expander === (%s): удалены названия дисциплин из запроса для расширения: %r", query, route.query_names)
 
         if route.query_type == QueryType.MULTI_COMPARE or not expanded_flag:
             if route.query_type == QueryType.MULTI_COMPARE:
