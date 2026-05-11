@@ -197,7 +197,7 @@ class RAGPipeline:
         if not all_chunks:
             return NO_DATA_MSG, [], VerificationResult(is_valid=False, note="документы не найдены")
 
-        answer, context = self._generation.generate(query, all_chunks, expanded)
+        answer, context = self._generation.generate(query, all_chunks, expanded.query_type.value)
         verified = self._verification.verify(query, answer, context, expanded.query_type)
         log.info(
             "=== Pipeline === MULTI_COMPARE итог: %d дисциплин, verified=%s",
@@ -247,10 +247,7 @@ class RAGPipeline:
         log.info("=== Pipeline === MULTI_GLOBAL_SEMANTIC: %d дисциплин", len(grouped))
         selected = [c for disc_chunks in grouped.values() for c in disc_chunks]
 
-        context = build_context(selected)
-        answer, ctx = self._generation.generate_from_context(
-            query, context, route.query_type.value
-        )
+        answer, ctx = self._generation.generate(query, selected, route.query_type.value)
         verified = self._verification.verify(query, answer, ctx, route.query_type)
         return answer, selected, verified
 
@@ -299,7 +296,7 @@ class RAGPipeline:
             note = "нет чанков"
             return [], VerificationResult(is_valid=False, note=f"[{step}] {note}" if step else note), NO_DATA_MSG
 
-        answer, context = self._generation.generate(query, chunks, expanded)
+        answer, context = self._generation.generate(query, chunks, expanded.query_type.value)
         verified = self._verification.verify(query, answer, context, expanded.query_type)
 
         verified.note = f"[{step}] {verified.note}" if step else verified.note

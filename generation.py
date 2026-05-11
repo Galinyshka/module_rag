@@ -49,14 +49,14 @@ class GenerationModule:
     def __init__(self) -> None:
         self._client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
 
-    def generate(self, query: str, chunks: list[RetrievedChunk], expanded: ExpandedQuery,
+    def generate(self, query: str, chunks: list[RetrievedChunk], query_type_value: str,
                  ) -> tuple[str, str]:
         '''Генерация с использовнием контекста из чанков'''
 
         context = build_context(chunks)
 
         template = GENERATE_PROMPTS.get(
-            expanded.query_type.value,
+            query_type_value,
             GENERATE_PROMPTS["single.global"]  # safe fallback
         )
 
@@ -65,7 +65,7 @@ class GenerationModule:
         return self._generate_with_prompt(
             prompt=prompt,
             context=context,
-            label=f"generate:{expanded.query_type.value}",
+            label=f"generate:{query_type_value}",
         )
 
     def generate_from_context(self, query: str, context: str, query_type_value: str,
