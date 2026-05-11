@@ -9,7 +9,6 @@ DECOMPOSE_PROMPT
 HYDE_PROMPT
 GENERATE_SINGLE_SIMPLE
 GENERATE_SINGLE_GLOBAL
-GENERATE_MULTI_RELATION
 GENERATE_MULTI_GLOBAL
 FACT_EXTRACT_PROMPT
 VERIFY_PROMPT 
@@ -359,24 +358,6 @@ GENERATE_SINGLE_GLOBAL = """\
 
 Ответ:"""
 
-GENERATE_MULTI_RELATION = """\
-Ты — ассистент, выполняющий сравнительный анализ рабочих программ дисциплин.
-
-Правила:
-- Опирайся СТРОГО на предоставленный контекст, не добавляй данные из общих знаний
-- Используй таблицу если сравниваются числовые или категориальные параметры
-- Если таблица неудобна — структурируй по дисциплинам: «Дисциплина A: ... Дисциплина B: ...»
-- Указывай конкретные значения, не ограничивайся «больше/меньше»
-- Если по дисциплине есть пометка "[...данные обрезаны...]" или данных нет — \
-явно напиши «данные по дисциплине X отсутствуют в контексте»
-
-Вопрос: {query}
-
-Контекст:
-{context}
-
-Ответ:"""
-
 
 
 GENERATE_MULTI_GLOBAL = """\
@@ -395,8 +376,6 @@ GENERATE_MULTI_GLOBAL = """\
 {context}
 
 Ответ:"""
-
-
 
 
 SYNTHESIS_PROMPT = """
@@ -418,27 +397,6 @@ SYNTHESIS_PROMPT = """
 — Отвечай на русском языке.
 """.strip()
 
-# ---------------------------------------------------------------------------
-# Fact Extractor
-# ---------------------------------------------------------------------------
-
-FACT_EXTRACT_PROMPT = """\
-Из текста ниже извлеки ТОЛЬКО конкретный ответ на вопрос.
-
-Формат ответа:
-- Число → только число с единицей измерения: «32 ч.», «4 ЗЕ»
-- Список → через запятую: «ПКН-1, УК-3, ОПК-2»
-- Название → точная фраза из текста: «экзамен», «зачёт с оценкой»
-- Если ответа нет в тексте → пустая строка (ничего не пиши)
-
-НЕ пиши вступлений, пояснений, полных предложений.
-
-Вопрос: {query}
-
-Текст:
-{text}
-
-Ответ:"""
 
 # ---------------------------------------------------------------------------
 # Verification
@@ -482,8 +440,6 @@ VERIFY_PROMPT = """\
 {answer}
 """
 
-
-# prompts.py
 VERIFY_COMPARE_PROMPT = """
 Пользователь попросил сравнить учебные дисциплины. Оцени качество ответа.
 
@@ -507,13 +463,7 @@ retry всегда false: повторный поиск невозможен, п
 {{"is_valid": true/false, "retry": false, "note": "..."}}
 """.strip()
 
-# Промпты для generate_from_context при MULTI_GLOBAL запросах.
-# generate_from_context подставляет их по значению query_type.value
 
-
-# ---------------------------------------------------------------------------
-# multi.global.catalog
-# ---------------------------------------------------------------------------
 PROMPT_MULTI_GLOBAL_CATALOG = """
 Ты — ассистент по учебным программам. Пользователь хочет узнать, какие дисциплины есть в корпусе.
 
@@ -584,9 +534,6 @@ PROMPT_MULTI_GLOBAL_TOPIC = """
 """.strip()
 
 
-# ---------------------------------------------------------------------------
-# multi.global.semantic
-# ---------------------------------------------------------------------------
 PROMPT_MULTI_GLOBAL_SEMANTIC = """
 Ты — ассистент по учебным программам.
 
@@ -602,25 +549,14 @@ PROMPT_MULTI_GLOBAL_SEMANTIC = """
 """.strip()
 
 
-# ---------------------------------------------------------------------------
-# Маппинг query_type.value → промпт
-# Используется в GenerationModule.generate_from_context
-# ---------------------------------------------------------------------------
 MULTI_GLOBAL_PROMPTS: dict[str, str] = {
     "multi.global.catalog":              PROMPT_MULTI_GLOBAL_CATALOG,
-    "multi.global.competency_exact":     PROMPT_MULTI_GLOBAL_COMPETENCY_EXACT,
-    "multi.global.competency_semantic":  PROMPT_MULTI_GLOBAL_COMPETENCY_SEMANTIC,
-    "multi.global.topic":                PROMPT_MULTI_GLOBAL_TOPIC,
     "multi.global.semantic":             PROMPT_MULTI_GLOBAL_SEMANTIC,
 }
 
 GENERATE_PROMPTS = {
     "single.simple":  GENERATE_SINGLE_SIMPLE,
     "single.global":  GENERATE_SINGLE_GLOBAL,
-    "multi.relation": GENERATE_MULTI_RELATION,
     "multi.global.catalog":              PROMPT_MULTI_GLOBAL_CATALOG,
-    "multi.global.competency_exact":     PROMPT_MULTI_GLOBAL_COMPETENCY_EXACT,
-    "multi.global.competency_semantic":  PROMPT_MULTI_GLOBAL_COMPETENCY_SEMANTIC,
-    "multi.global.topic":                PROMPT_MULTI_GLOBAL_TOPIC,
     "multi.global.semantic":             PROMPT_MULTI_GLOBAL_SEMANTIC,
 }

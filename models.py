@@ -12,9 +12,9 @@ class QueryType(str, Enum):
     NOT_FOUND          = "not_found"
     IRRELEVANT         = "irrelevant"
 
-    MULTI_GLOBAL       = "multi.global"
-    MULTI_GLOBAL_CATALOG            = "multi.global.catalog"
-    MULTI_GLOBAL_SEMANTIC           = "multi.global.semantic"
+    MULTI_GLOBAL = "multi.global"
+    MULTI_GLOBAL_CATALOG = "multi.global.catalog"
+    MULTI_GLOBAL_SEMANTIC = "multi.global.semantic"
 
 
 @dataclass
@@ -24,15 +24,6 @@ class RouteResult:
     message:     str = ""
     global_entity:      str = "" 
 
-
-@dataclass
-class ExpandedQuery:
-    original:    str
-    paraphrases: list[str]
-    sub_queries: list[str]
-    disciplines: list[str]
-    query_type:  QueryType
-    hyde_text:   str = ""    
 
 @dataclass
 class ExpandedQuery:

@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 
 _GLOBAL_SUBTYPE_MAP = {
     "catalog":               QueryType.MULTI_GLOBAL_CATALOG,
-    "global_semantic":       QueryType.MULTI_GLOBAL_SEMANTIC,
+    "semantic":       QueryType.MULTI_GLOBAL_SEMANTIC,
 }
 
 # ---------------------------------------------------------------------------

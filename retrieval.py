@@ -66,7 +66,7 @@ class RetrievalModule:
         return chunks
 
     def _retrieve_single(self, expanded: ExpandedQuery) -> list[RetrievedChunk]:
-        '''Для single запросов: один запрос → RRF → реранк по всему корпусу.'''
+        '''Для single запросов сразу делаем RRF: один запрос → RRF → реранк по всему корпусу.'''
         chunks = self._multi_query_rrf(
             queries=self._queries(expanded),
             qdrant_filter=self._discipline_filter(expanded.disciplines),
