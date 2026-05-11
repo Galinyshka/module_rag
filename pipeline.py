@@ -292,8 +292,8 @@ class RAGPipeline:
         chunks = self._retrieve_chunks(query, expanded)
 
         if expanded.query_type == QueryType.SINGLE_SIMPLE:
-            chunks = [chunks[0]] # берем только лучший чанк  
-            
+            chunks = chunks[:2] # берем только лучший чанк  
+
         if not chunks:
             log.warning("=== Pipeline === Чанки не найдены.")
             note = "нет чанков"
