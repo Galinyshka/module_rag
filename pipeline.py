@@ -216,6 +216,7 @@ class RAGPipeline:
         
         if route.query_type == QueryType.MULTI_GLOBAL_CATALOG:
             context = self._catalog.as_llm_context(mode="full")
+            log.debug('=== Pipeline (catalog) === context: %s', context)
             answer, ctx = self._generation.generate_from_context(
                 query, context, route.query_type.value
             )

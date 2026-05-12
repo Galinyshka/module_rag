@@ -146,6 +146,7 @@ class Router:
 
         try:
             data = _llm_call(self._client, prompt)
+            log.debug('=== Router === data llm: %s', data)
         except Exception as exc:
             log.warning("extract_disciplines LLM failed: %s", exc)
             return None
@@ -157,6 +158,7 @@ class Router:
         if status == "found":
             # если LLM понял что термин из названия, но intent глобальный — не считаем found
             if data.get("intent") == "about_topic":
+                log.info("=== Router === %s", data)
                 log.info("=== Router === intent=about_topic despite fuzzy match, treating as zero")
                 return None  # → уйдёт в classify_zero → MULTI_GLOBAL
 

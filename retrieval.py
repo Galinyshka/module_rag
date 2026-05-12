@@ -89,14 +89,14 @@ class RetrievalModule:
             qdrant_filter = None,           # нет фильтра → весь корпус
             top_k        = TOP_K_GLOBAL,
         )
-    
+        chunks = [chunk for chunk in chunks if chunk.score > 0.1] # интересная константа
         log.info(
             "=== Retrieval === MULTI_GLOBAL_SEMANTIC: %d чанков из %d дисциплин",
             len(chunks),
             len({c.discipline for c in chunks}),
         )
         return chunks
-
+        log.info('=== Retrieval === chunks check: %s', chunks)
        
     def _enrich_with_parents(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
         """ Подтягивает родительские блоки и всех их детей"""
