@@ -4,7 +4,7 @@ import re
 import logging
 from openai import OpenAI
 from rapidfuzz import fuzz, process
-from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_FAST, LLM_MAX_TOKENS_FAST, RPD_NAMES, FUZZY_THRESHOLD, FUZZY_TOP_K
+from config import LLM_BASE_URL, LLM_MODEL_FAST, LLM_MAX_TOKENS_FAST, RPD_NAMES, FUZZY_THRESHOLD, FUZZY_TOP_K, LLM_API_KEY_ROUTING
 from models import QueryType, RouteResult
 from prompts import (
     PROMPT_CLASSIFY_MULTI,
@@ -48,10 +48,10 @@ def _llm_call(client: OpenAI, prompt: str) -> dict:
 def _extract_query_names(client: OpenAI, query: str) -> list[str]:
     """ LLM вытаскивает сырые названия из запроса. """
     prompt = PROMPT_EXTRACT_QUERY_DISCIPLINE.format(query=query)
-    log.info("=== Router === Extract names prompt: %s", prompt)
+    log.debug("=== Router === Extract names prompt: %s", prompt)
     try:
         data = _llm_call(client, prompt)
-        log.info("=== Router === raw llm: %s", data)
+        log.debug("=== Router === raw llm: %s", data)
         names = data.get("names") or []
         return [n.lower().strip() for n in names if n.strip()]
     except Exception as exc:
@@ -78,6 +78,7 @@ def _fuzzy_candidates(extracted_names: list[str]) -> tuple[list[str], list[str]]
             scorer=fuzz.token_set_ratio,
             limit=FUZZY_TOP_K,
         )
+        log.debug('=== Fuzzy === FUZZY_THRESHOLD: %s', FUZZY_THRESHOLD)
         matches = [(match, score) for match, score, _ in results if score >= FUZZY_THRESHOLD]
         if matches:
             for match, score in matches:
@@ -98,7 +99,7 @@ def _fuzzy_candidates(extracted_names: list[str]) -> tuple[list[str], list[str]]
 
 class Router:
     def __init__(self) -> None:
-        self._client  = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
+        self._client  = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY_ROUTING)
         self._rpd_names = set(RPD_NAMES)
 
     # ------------------------------------------------------------------
@@ -268,6 +269,6 @@ class Router:
             log.warning("=== Router === Router fallback: %s", exc)
             return RouteResult(QueryType.SINGLE_SIMPLE, [], f"fallback: {exc}")
 
-        log.info("=== Router Final: type=%s  disciplines=%s", result.query_type, result.disciplines)
+        log.info("=== Router === Final: type=%s  disciplines=%s", result.query_type.value, result.disciplines)
         return result
 # Дальнейшая обработка RouteResult происходит в pipeline.py, который принимает результат маршрутизации и решает, что делать дальше (например, если query_type=CLARIFY, то возвращает RAGResponse с кандидатами для уточнения).

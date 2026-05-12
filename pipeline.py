@@ -40,6 +40,10 @@ class RAGPipeline:
         self._catalog = DisciplineCatalog("test_data")
         log.info("=== Pipeline === Пайплайн инициализирован.")
 
+    def route_only(self, query: str) -> "RouteResult":
+        """Запускает только роутер, без retrieval / generation / verification."""
+        return self._router.route(query)
+    
     def ask(self, query: str) -> RAGResponse:
         log.info("=== Pipeline === Запрос: %s", query)
 

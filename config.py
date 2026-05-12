@@ -27,7 +27,7 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 LLM_BASE_URL     = os.getenv("LLM_BASE_URL",     "https://rus-gpt.com/api/v1")
 LLM_API_KEY      = os.getenv("LLM_API_KEY",      "")
-
+LLM_API_KEY_ROUTING = os.getenv("LLM_API_KEY_ROUTING", "")
 LLM_MODEL_FAST   = os.getenv("LLM_MODEL_FAST",   "qwen/qwen3-30b-a3b-instruct-2507")
 LLM_MODEL_VERIFY = os.getenv("LLM_MODEL_VERIFY", "deepseek/deepseek-v3.2")
 LLM_MODEL_MAIN   = os.getenv("LLM_MODEL_MAIN",   "deepseek/deepseek-v3.2")
@@ -68,7 +68,7 @@ EMBED_BATCH_SIZE = int(os.getenv("EMBED_BATCH_SIZE", "32"))
 # Настройки fuzzy-поиска
 # ---------------------------------------------------------------------------
 
-FUZZY_THRESHOLD = 60   # минимальный score для попадания в кандидаты
+FUZZY_THRESHOLD = 50   # минимальный score для попадания в кандидаты
 FUZZY_TOP_K     = 5    # максимум кандидатов, передаваемых в LLM
 
 
@@ -90,7 +90,7 @@ PARAPHRASES_COUNT = 3 # Количество перефразировок зап
 # ---------------------------------------------------------------------------
 # Retrieval
 # ---------------------------------------------------------------------------
-TOP_K_SINGLE          = 3 # сколько чанков брать для single запросов
+TOP_K_SINGLE          = 6 # сколько чанков брать для single запросов
 TOP_K_GLOBAL = 150   # 3 чанка × 50 дисциплин с запасом
 # ---------------------------------------------------------------------------
 # Reranker

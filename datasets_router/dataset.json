@@ -300,31 +300,31 @@
   {
     "question": "Какие дисциплины включают использование сверточных нейронных сетей и их архитектур?",
     "ground_truth": "",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "Какие дисциплины используют PyTorch или аналогичные фреймворки?",
     "ground_truth": "",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "Какие дисциплины включают задачи классификации, детекции или сегментации объектов?",
     "ground_truth": "",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "В каких темах встречаются графовые модели и их применение в реальных системах?",
     "ground_truth": "",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "В каких курсах рассматриваются генеративные модели (GAN, VAE или аналогичные архитектуры)?",
     "ground_truth": "",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
@@ -539,52 +539,52 @@
   },
   {
     "question": "Какие дисциплины связаны с обработкой изображений?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "В каких курсах изучаются графовые алгоритмы?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "Какие дисциплины включают изучение нейронных сетей?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "Какие предметы связаны с анализом текстовых данных?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "В каких дисциплинах рассматриваются генеративные архитектуры?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "Какие курсы используют методы машинного обучения?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "В каких дисциплинах изучаются технологии больших данных?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "Какие курсы содержат темы по анализу графов?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "В каких дисциплинах рассматриваются рекомендательные алгоритмы?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "Какие предметы включают методы обработки естественного языка?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
@@ -792,30 +792,59 @@
 
   {
     "question": "Какие дисциплины используют графовые нейронные сети?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "В каких курсах рассматривается кластеризация данных?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "Какие дисциплины связаны с анализом социальных сетей?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "В каких курсах изучаются методы классификации?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
   {
     "question": "Какие предметы содержат темы по embeddings и векторным представлениям?",
-    "router_type": "multi.global",
+    "router_type": "multi.global.semantic",
     "ground_discipline": []
   },
-
+  {
+    "question": "Выведи все дисциплины",
+    "router_type": "multi.global.catalog",
+    "ground_discipline": []
+  },
+  {
+    "question": "По какой дисциплине больше всего часов обучения?",
+    "router_type": "multi.global.catalog",
+    "ground_discipline": []
+  },
+  {
+    "question": "Какие предметы самые продолжительные?",
+    "router_type": "multi.global.catalog",
+    "ground_discipline": []
+  },
+  {
+    "question": "Какие предметы изучаются в каких семестрах и на каких курсах?",
+    "router_type": "multi.global.catalog",
+    "ground_discipline": []
+  },
+  {
+    "question": "По каким дисциплинам предусмотрен зачёт?",
+    "router_type": "multi.global.catalog",
+    "ground_discipline": []
+  },
+  {
+    "question": "По каким дисциплинам предусмотрен экзамен?",
+    "router_type": "multi.global.catalog",
+    "ground_discipline": []
+  },
   {
     "question": "Есть ли тема по transformers в дисциплине глубокое обучение?",
     "router_type": "single.simple",

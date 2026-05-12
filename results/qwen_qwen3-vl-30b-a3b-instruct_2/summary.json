@@ -1,0 +1,144 @@
+{
+  "summary": {
+    "run": 2,
+    "model": "qwen/qwen3-vl-30b-a3b-instruct",
+    "dataset_path": "datasets_router/dataset.json",
+    "total": 3,
+    "with_llm_eval": false,
+    "router_accuracy": 1.0,
+    "per_type_accuracy": {
+      "single.simple": {
+        "count": 3,
+        "correct": 3,
+        "accuracy": 1.0
+      }
+    },
+    "confusion_matrix": {
+      "single.simple": {
+        "single.simple": 3
+      }
+    },
+    "discipline_samples": 3,
+    "discipline_exact_match": 1.0,
+    "discipline_correct_mean": 1.0,
+    "is_verified_rate": 0.0,
+    "verification_step_dist": {
+      "no_steps": 1.0
+    },
+    "response_time_mean": 4.1,
+    "response_time_std": 0.688,
+    "context_tokens_mean": 0.0,
+    "context_tokens_std": 0.0,
+    "answer_tokens_mean": 0.0,
+    "answer_tokens_std": 0.0,
+    "by_query_type": {
+      "single.simple": {
+        "count": 3,
+        "router_accuracy": 1.0,
+        "discipline_exact_match": 1.0,
+        "discipline_correct_mean": 1.0,
+        "is_verified_rate": 0.0,
+        "verification_step_dist": {
+          "no_steps": 1.0
+        },
+        "response_time_mean": 4.1,
+        "response_time_std": 0.688,
+        "context_tokens_mean": 0.0,
+        "answer_tokens_mean": 0.0
+      }
+    },
+    "faithfulness_mean": null,
+    "faithfulness_std": null,
+    "relevancy_mean": null,
+    "relevancy_std": null,
+    "correctness_mean": null,
+    "correctness_std": null,
+    "low_quality_count": 0
+  },
+  "results": [
+    {
+      "question": "Сколько часов лекций по дисциплине алгоритмы и структуры данных в питон?",
+      "true_router": "single.simple",
+      "predicted_router": "single.simple",
+      "router_correct": true,
+      "ground_disciplines": [
+        "Алгоритмы и структуры данных в языке Python"
+      ],
+      "predicted_disciplines": [
+        "Алгоритмы и структуры данных в языке Python"
+      ],
+      "discipline_exact_match": true,
+      "discipline_correct_count": 1,
+      "answer": "",
+      "is_verified": false,
+      "verification_step": null,
+      "verification_note": "",
+      "response_time": 4.872,
+      "context_tokens": 0,
+      "answer_tokens": 0,
+      "faithfulness": null,
+      "relevancy": null,
+      "correctness": null,
+      "faithfulness_rationale": "",
+      "relevancy_rationale": "",
+      "correctness_rationale": "",
+      "error": ""
+    },
+    {
+      "question": "Сколько часов семинаров по предмету рекомендательные системы?",
+      "true_router": "single.simple",
+      "predicted_router": "single.simple",
+      "router_correct": true,
+      "ground_disciplines": [
+        "Рекомендательные системы и коллаборативная фильтрация"
+      ],
+      "predicted_disciplines": [
+        "Рекомендательные системы и коллаборативная фильтрация"
+      ],
+      "discipline_exact_match": true,
+      "discipline_correct_count": 1,
+      "answer": "",
+      "is_verified": false,
+      "verification_step": null,
+      "verification_note": "",
+      "response_time": 3.553,
+      "context_tokens": 0,
+      "answer_tokens": 0,
+      "faithfulness": null,
+      "relevancy": null,
+      "correctness": null,
+      "faithfulness_rationale": "",
+      "relevancy_rationale": "",
+      "correctness_rationale": "",
+      "error": ""
+    },
+    {
+      "question": "Какова общая трудоемкость курса обработка текстов на естественных языках?",
+      "true_router": "single.simple",
+      "predicted_router": "single.simple",
+      "router_correct": true,
+      "ground_disciplines": [
+        "Обработка текстов на естественных языках"
+      ],
+      "predicted_disciplines": [
+        "Обработка текстов на естественных языках"
+      ],
+      "discipline_exact_match": true,
+      "discipline_correct_count": 1,
+      "answer": "",
+      "is_verified": false,
+      "verification_step": null,
+      "verification_note": "",
+      "response_time": 3.876,
+      "context_tokens": 0,
+      "answer_tokens": 0,
+      "faithfulness": null,
+      "relevancy": null,
+      "correctness": null,
+      "faithfulness_rationale": "",
+      "relevancy_rationale": "",
+      "correctness_rationale": "",
+      "error": ""
+    }
+  ]
+}

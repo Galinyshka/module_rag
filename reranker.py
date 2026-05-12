@@ -24,10 +24,10 @@ class Reranker:
             return chunks
 
         pairs  = [(query, c.text) for c in chunks]
-        scores = self._model.predict(pairs)
-        log.debug("Reranker single query: raw scores: %s", " ".join(f"{s:.2f}" for s in scores))
+        scores = self._model.predict(pairs, show_progress_bar=False) # тут полоска Batches
+        log.debug("=== Reranker (single query) === raw scores: %s", " ".join(f"{s:.2f}" for s in scores))
         scores = [float(s)*0.9 + float(c.score) * 0.1 for s, c in zip(scores, chunks)]  # комбинируем с косинусным score для стабильности (можно регулировать веса)
-        log.debug("Reranker single query: combined scores: %s", " ".join(f"{s:.2f}" for s in scores))
+        log.debug("=== Reranker (single query) === combined scores: %s", " ".join(f"{s:.2f}" for s in scores))
 
         ranked = sorted(
             zip(chunks, scores),
@@ -41,17 +41,17 @@ class Reranker:
                 chunk.score = float(score)   # заменяем косинусный score на reranker score
                 reranked_chunks.append(chunk)
 
-        log.info("Reranker: %d -> %d чанков (top score=%.3f)",
+        log.info("=== Reranker === %d -> %d чанков (top score=%.3f)",
                  len(chunks), len(reranked_chunks), reranked_chunks[0].score if reranked_chunks else 0)
-        log.info("Chunks after rerank:\n%s",
+        log.info("=== Reranker === Chunks after rerank:\n%s",
          "\n\n".join(
-             f"  [{i+1}] {c.score:+.2f} | {c.discipline} | {c.block_name}\n  {c.text[:200]}"
+             f"  [{i+1}] {c.score:+.2f} | {c.discipline} | {c.block_name}\n  {c.text[:100]}"
              for i, c in enumerate(reranked_chunks)
          ))
         
         if reranked_chunks:
             sc = [c.score for c in reranked_chunks]
-            log.info("Reranker scores: min=%.3f max=%.3f avg=%.3f | distribution: %s",
+            log.info("=== Reranker === scores: min=%.3f max=%.3f avg=%.3f | distribution: %s",
                      min(sc), max(sc), sum(sc)/len(sc),
                      " ".join(f"{s:.2f}" for s in sc))
 

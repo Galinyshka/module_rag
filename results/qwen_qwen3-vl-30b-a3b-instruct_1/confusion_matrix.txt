@@ -1,0 +1,28 @@
+CONFUSION MATRIX
+строки = истинный тип, столбцы = предсказанный тип
+
+                                       clarify             irrelevant          multi.compare           multi.global   multi.global.catalog  multi.global.semantic         multi.relation              not_found          single.global          single.simple
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+                clarify                    [8]                      0                      0                      0                      0                      2                      0                      2                      1                      1
+             irrelevant                      0                   [12]                      0                      0                      0                      2                      0                      0                      0                      0
+          multi.compare                      1                      0                    [1]                      0                      0                      0                      6                      0                      0                      2
+           multi.global                      0                      0                      0                      0                      1                      0                      0                      0                      0                      0
+   multi.global.catalog                      0                      0                      0                      0                    [6]                      0                      0                      0                      0                      0
+  multi.global.semantic                      0                      0                      0                      0                      8                    [9]                      0                      0                      2                      0
+         multi.relation                      0                      0                      0                      0                      0                      1                   [24]                      0                      0                      0
+              not_found                      4                      1                      0                      0                      6                      2                      0                      0                      0                      0
+          single.global                      0                      0                      0                      0                      0                      1                      0                      0                   [17]                      1
+          single.simple                      0                      0                      0                      0                      0                      2                      0                      0                      0                   [27]
+
+ТОЧНОСТЬ ПО ТИПАМ
+────────────────────────────────────────────
+clarify                      8/14   0.571  ███████████
+irrelevant                  12/14   0.857  █████████████████
+multi.compare                1/10   0.100  ██
+multi.global                 0/1    0.000  
+multi.global.catalog         6/6    1.000  ████████████████████
+multi.global.semantic        9/19   0.474  █████████
+multi.relation              24/25   0.960  ███████████████████
+not_found                    0/13   0.000  
+single.global               17/19   0.895  █████████████████
+single.simple               27/29   0.931  ██████████████████

@@ -51,8 +51,8 @@ class VerificationModule:
         prompt = template.format(query=query, context=context, answer=answer)
         log.info("=== Verification === query_type: %s, query: %s", query_type, query)
         log.info("=== Verification === prompt length: %d", len(prompt))
-        log.info("=== Verification === prompt: %s", prompt[:500])  
-        log.info("=== Verification === answer: %s", answer[:500])
+        log.debug("=== Verification === prompt: %s", prompt[:500])  
+        log.debug("=== Verification === answer: %s", answer[:500])
         try:
             resp = self._client.chat.completions.create(
                 model=LLM_MODEL_VERIFY,
