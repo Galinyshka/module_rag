@@ -133,6 +133,7 @@ class GenerationModule:
     
     def _call(self, prompt: str) -> str:
         log.debug("=== Generation === Final prompt: %s", prompt[:1000].replace("\n", "\\n") + ("..." if len(prompt) > 500 else ""))
+        log.debug("=== Generation === gen_model: %s", LLM_MODEL_MAIN)
         resp = self._client.chat.completions.create(
             model      = LLM_MODEL_MAIN,
             max_tokens = LLM_MAX_TOKENS_MAIN,

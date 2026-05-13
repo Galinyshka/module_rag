@@ -37,6 +37,7 @@ def _parse_json(text: str) -> dict:
 
 def _llm_call(client: OpenAI, prompt: str) -> dict:
     """Универсальная обёртка для вызова LLM и парсинга JSON-ответа."""
+    log.debug('=== Router === router_model: %s', LLM_MODEL_FAST)
     resp = client.chat.completions.create(
         model=LLM_MODEL_FAST,
         max_tokens=LLM_MAX_TOKENS_FAST,

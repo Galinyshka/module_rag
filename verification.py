@@ -54,6 +54,7 @@ class VerificationModule:
         log.debug("=== Verification === prompt: %s", prompt)  
         log.debug("=== Verification === answer: %s", answer[:500])
         try:
+            log.debug('=== Verification === ver_model: %s', LLM_MODEL_VERIFY)
             resp = self._client.chat.completions.create(
                 model=LLM_MODEL_VERIFY,
                 max_tokens=LLM_MAX_TOKENS_VERIFY,

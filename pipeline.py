@@ -10,6 +10,7 @@ from router        import Router, RouteResult
 from verification  import VerificationModule
 from catalog import DisciplineCatalog
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from config import LLM_MODEL_FAST, LLM_MODEL_MAIN, LLM_MODEL_VERIFY
 
 log = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ MULTI_GLOBAL_TYPES = {
     QueryType.MULTI_GLOBAL_CATALOG,
     QueryType.MULTI_GLOBAL_SEMANTIC,
 }
+TOP_K_SINGLE_SIMPLE = 3
 
 class RAGPipeline:
 
@@ -39,6 +41,7 @@ class RAGPipeline:
         self._verification  = VerificationModule()
         self._catalog = DisciplineCatalog("test_data")
         log.info("=== Pipeline === Пайплайн инициализирован.")
+        log.info('=== Pipeline === router: %s, gen: %s, ver: %s', LLM_MODEL_FAST, LLM_MODEL_MAIN, LLM_MODEL_VERIFY)
 
     def route_only(self, query: str) -> "RouteResult":
         """Запускает только роутер, без retrieval / generation / verification."""
@@ -297,7 +300,7 @@ class RAGPipeline:
         chunks = self._retrieve_chunks(query, expanded)
 
         if expanded.query_type == QueryType.SINGLE_SIMPLE:
-            chunks = chunks[:2] # берем только лучший чанк  
+            chunks = chunks[:TOP_K_SINGLE_SIMPLE] # берем только лучшие 3 чанк  
 
         if not chunks:
             log.warning("=== Pipeline === Чанки не найдены.")
