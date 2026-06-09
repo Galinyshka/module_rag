@@ -4,9 +4,19 @@ import re
 import logging
 from openai import OpenAI
 from rapidfuzz import fuzz, process
-from config import LLM_BASE_URL, LLM_MODEL_FAST, LLM_MAX_TOKENS_FAST, RPD_NAMES, FUZZY_THRESHOLD, FUZZY_TOP_K, LLM_API_KEY_ROUTING
-from models import QueryType, RouteResult
-from prompts import (
+from rag.domain.models import QueryType, RouteResult
+
+from rag.config.config import (
+    LLM_BASE_URL, 
+    LLM_MODEL_FAST, 
+    LLM_MAX_TOKENS_ROUTER, 
+    LLM_API_KEY_ROUTER,
+    RPD_NAMES, 
+    FUZZY_THRESHOLD, 
+    FUZZY_TOP_K, 
+)
+
+from rag.config.prompts import (
     PROMPT_CLASSIFY_MULTI,
     PROMPT_EXTRACT_QUERY_DISCIPLINE,
     PROMPT_EXTRACT_DISCIPLINES,
@@ -40,7 +50,7 @@ def _llm_call(client: OpenAI, prompt: str) -> dict:
     log.debug('=== Router === router_model: %s', LLM_MODEL_FAST)
     resp = client.chat.completions.create(
         model=LLM_MODEL_FAST,
-        max_tokens=LLM_MAX_TOKENS_FAST,
+        max_tokens=LLM_MAX_TOKENS_ROUTER,
         messages=[{"role": "user", "content": prompt}],
     )
     return _parse_json(resp.choices[0].message.content)
@@ -100,7 +110,7 @@ def _fuzzy_candidates(extracted_names: list[str]) -> tuple[list[str], list[str]]
 
 class Router:
     def __init__(self) -> None:
-        self._client  = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY_ROUTING)
+        self._client  = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY_ROUTER)
         self._rpd_names = set(RPD_NAMES)
 
     # ------------------------------------------------------------------

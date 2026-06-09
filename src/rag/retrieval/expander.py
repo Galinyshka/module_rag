@@ -4,14 +4,14 @@ import re
 import logging
 from openai import OpenAI
 
-from config import (
+from rag.config.config import (
     LLM_BASE_URL, LLM_API_KEY,
     LLM_MODEL_MAIN, LLM_MAX_TOKENS_HYDE, LLM_MAX_TOKENS_MAIN,
     PARAPHRASES_COUNT,
 )
 
-from models import ExpandedQuery, QueryType, RouteResult
-from prompts import DECOMPOSE_EXPAND_PROMPT, PARAPHRASE_PROMPT, HYDE_PROMPT
+from rag.domain.models import ExpandedQuery, QueryType, RouteResult
+from rag.config.prompts import DECOMPOSE_EXPAND_PROMPT, PARAPHRASE_PROMPT, HYDE_PROMPT
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)

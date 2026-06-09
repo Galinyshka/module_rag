@@ -2,12 +2,12 @@ from __future__ import annotations
 import json
 import re, logging
 from openai import OpenAI
-from config import (
+from rag.config.config import (
     LLM_BASE_URL, LLM_API_KEY,
     LLM_MODEL_VERIFY, LLM_MAX_TOKENS_VERIFY,
 )
-from models import QueryType, RetrievedChunk, VerificationResult
-from prompts import VERIFY_PROMPTS
+from rag.domain.models import QueryType, VerificationResult
+from rag.config.prompts import VERIFY_PROMPTS
 
 log = logging.getLogger(__name__)
 

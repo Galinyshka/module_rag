@@ -1,9 +1,9 @@
 from __future__ import annotations
 import logging
 from openai import OpenAI
-from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_MAIN, LLM_MAX_TOKENS_MAIN
-from models import ExpandedQuery, RetrievedChunk
-from prompts import COMPARE_PROMPT, GENERATE_PROMPTS, SYNTHESIS_PROMPT
+from rag.config.config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_MAIN, LLM_MAX_TOKENS_MAIN
+from rag.domain.models import ExpandedQuery, RetrievedChunk
+from rag.config.prompts import COMPARE_PROMPT, GENERATE_PROMPTS, SYNTHESIS_PROMPT
 
 log = logging.getLogger(__name__)
 MAX_CONTEXT_CHARS = 100000

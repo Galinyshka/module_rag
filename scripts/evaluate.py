@@ -45,8 +45,8 @@ from pathlib import Path
 from statistics import mean, stdev
 from typing import Optional
 
-from pipeline import RAGPipeline
-from config import LLM_MODEL_FAST
+from rag.pipeline.pipeline import RAGPipeline
+from rag.config.config import LLM_MODEL_FAST
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -242,7 +242,7 @@ JSON: {{"score": 1-5, "rationale": "1-2 предложения"}}
 class Judge:
     def __init__(self) -> None:
         from openai import OpenAI
-        from config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_EVAL, LLM_MAX_TOKENS_EVAL
+        from rag.config.config import LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_EVAL, LLM_MAX_TOKENS_EVAL
         self._client = OpenAI(base_url=LLM_BASE_URL, api_key=LLM_API_KEY)
         self._model = LLM_MODEL_EVAL
         self._max_tokens = LLM_MAX_TOKENS_EVAL

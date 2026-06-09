@@ -42,21 +42,11 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
-from config import (
-    LLM_BASE_URL,
-    LLM_API_KEY,
-    LLM_MODEL_IDX,
-    LLM_MAX_TOKENS_IDX,
-    LLM_RETRY_DELAY,
-    LLM_MAX_RETRIES,
-    QDRANT_URL,
-    QDRANT_COLLECTION,
-    VEC_QUESTIONS,   # было VEC_TEXT
-    VEC_SUMMARY,
-    EMBED_MODEL,
-    EMBED_DIM,
-    EMBED_BATCH_SIZE,
-    QUESTIONS_COUNT,
+from rag.config.config import (
+    LLM_BASE_URL, LLM_API_KEY, LLM_MODEL_IDX, LLM_MAX_TOKENS_IDX, LLM_RETRY_DELAY, LLM_MAX_RETRIES,
+    QDRANT_URL, QDRANT_COLLECTION,
+    VEC_QUESTIONS, VEC_SUMMARY, QUESTIONS_COUNT,
+    EMBED_MODEL, EMBED_DIM, EMBED_BATCH_SIZE,
 )
 import logging
 

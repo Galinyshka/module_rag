@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: module-rag
+Version: 0.1.0
+Summary: RAG system for university discipline programs
+Requires-Python: >=3.10

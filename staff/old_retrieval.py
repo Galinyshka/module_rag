@@ -24,11 +24,11 @@ from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
 
-from config import (
+from src.rag.config.config import (
     EMBED_MODEL, QDRANT_URL, QDRANT_COLLECTION,
     VEC_TEXT, VEC_SUMMARY,
 )
-from models import ExpandedQuery, QueryType, RetrievedChunk
+from src.rag.domain.models import ExpandedQuery, QueryType, RetrievedChunk
 
 log = logging.getLogger(__name__)
 

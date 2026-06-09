@@ -6,17 +6,13 @@ from qdrant_client.models import (
     Filter, FieldCondition, MatchValue, MatchAny,
     Prefetch, FusionQuery, Fusion,
 )
-from models import ExpandedQuery, QueryType, RetrievedChunk
+from rag.domain.models import ExpandedQuery, QueryType, RetrievedChunk
 
-from config import (
+from rag.config.config import (
     EMBED_MODEL, QDRANT_URL, QDRANT_COLLECTION,
     VEC_QUESTIONS, VEC_SUMMARY,
     TOP_K_SINGLE,
     TOP_K_GLOBAL,
-    TOP_K_STAGE1,
-    TOP_K_PER_DISC,
-    MAX_DISCIPLINES_MULTI,
-    OVERVIEW_BLOCKS,
     RRF_PREFETCH_K,
     ALL_BLOCKS,
 )
@@ -30,6 +26,7 @@ class RetrievalModule:
         qdrant_url:  str = QDRANT_URL,
         collection:  str = QDRANT_COLLECTION,
         embed_model: str = EMBED_MODEL,
+
     ) -> None:
         log.info("Загрузка модели эмбедингов: %s ...", embed_model)
         self._embedder   = SentenceTransformer(embed_model)

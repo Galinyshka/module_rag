@@ -37,7 +37,7 @@ from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams, VectorsConfig
 
-from config import (
+from src.rag.config.config import (
     LLM_BASE_URL,
     LLM_API_KEY,
     LLM_MODEL_IDX,

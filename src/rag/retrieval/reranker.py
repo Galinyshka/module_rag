@@ -1,13 +1,11 @@
 from __future__ import annotations
 import logging
 from sentence_transformers import CrossEncoder
-from config import RERANKER_MODEL, RERANKER_TOP_K, RERANKER_TOP_K_BALANCE
-from models import RetrievedChunk
-from retrieval import RetrievalModule
+from rag.config.config import RERANKER_MODEL, RERANKER_TOP_K
+from rag.domain.models import RetrievedChunk
 
 log = logging.getLogger(__name__)
 
-RERANKER_TOP_K = 5
 
 class Reranker:
     def __init__(self) -> None:

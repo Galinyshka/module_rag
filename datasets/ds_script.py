@@ -1,4 +1,6 @@
 import json
+DATASET_PATH = 'datasets/datasets_router/dataset.json'
+
 
 def split_dataset(input_file='datasets/dataset.json'):
     # Загрузка данных
@@ -41,4 +43,4 @@ def split_dataset(input_file='datasets/dataset.json'):
     print(f"Готово! single_ds.json: {len(single)}, relation_ds.json: {len(relation)}, global_ds.json: {len(global_ds)}, router_check.json: {len(router_check)}")
 
 if __name__ == '__main__':
-    split_dataset('datasets/dataset.json')
+    split_dataset(DATASET_PATH)

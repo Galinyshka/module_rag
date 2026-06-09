@@ -1,16 +1,16 @@
 from __future__ import annotations
 import logging
 import time
-from expander      import QueryExpander
-from generation    import GenerationModule, build_context
-from models        import ExpandedQuery, QueryType, RAGResponse, RetrievedChunk, VerificationResult
-from reranker      import Reranker
-from retrieval    import RetrievalModule
-from router        import Router, RouteResult
-from verification  import VerificationModule
-from catalog import DisciplineCatalog
+from rag.retrieval.expander      import QueryExpander
+from rag.generation.generation    import GenerationModule, build_context
+from rag.domain.models        import ExpandedQuery, QueryType, RAGResponse, RetrievedChunk, VerificationResult
+from rag.retrieval.reranker      import Reranker
+from rag.retrieval.retrieval    import RetrievalModule
+from rag.router.router        import Router, RouteResult
+from rag.verification.verification  import VerificationModule
+from rag.utils.catalog import DisciplineCatalog
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from config import LLM_MODEL_FAST, LLM_MODEL_MAIN, LLM_MODEL_VERIFY
+from rag.config.config import LLM_MODEL_FAST, LLM_MODEL_MAIN, LLM_MODEL_VERIFY
 
 log = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ MULTI_GLOBAL_TYPES = {
     QueryType.MULTI_GLOBAL_CATALOG,
     QueryType.MULTI_GLOBAL_SEMANTIC,
 }
-TOP_K_SINGLE_SIMPLE = 3
+TOP_K_SINGLE_SIMPLE = 3 # уменьшаем колво чанков для протсых вопросов
 
 class RAGPipeline:
 

@@ -30,7 +30,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
-from models import QueryType, RAGResponse
+from rag.domain.models import QueryType, RAGResponse
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
@@ -103,9 +103,9 @@ def _apply_prompts(args: argparse.Namespace) -> None:
 # ---------------------------------------------------------------------------
 
 def _apply_tuning(args: argparse.Namespace) -> None:
-    import retrieval as ret
-    import expander  as exp
-    import config    as cfg
+    import rag.retrieval.retrieval as ret
+    import rag.retrieval.expander  as exp
+    import rag.config.config    as cfg
 
     ret.TOP_K_SINGLE          = args.top_k_single
     ret.TOP_K_PER_DISC        = args.top_k_per_disc
@@ -218,7 +218,7 @@ def _response_to_dict(query: str, response, elapsed: float) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def _make_pipeline(args):
-    from pipeline import RAGPipeline
+    from rag.pipeline.pipeline import RAGPipeline
     pipeline = RAGPipeline(qdrant_url=args.qdrant, collection=args.collection)
     if args.no_reranker:
         pipeline._reranker = _NoopReranker()
@@ -235,7 +235,7 @@ def cmd_ask(args: argparse.Namespace) -> None:
 
 
 def cmd_repl(args: argparse.Namespace) -> None:
-    from models import QueryType
+    from rag.domain.models import QueryType
     pipeline = _make_pipeline(args)
     print("RAG готова. Введите вопрос или 'exit'.\n")
 
