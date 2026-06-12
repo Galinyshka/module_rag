@@ -330,19 +330,19 @@
   {
     "question": "Изучается ли тема о векторном представлении узлов графа?",
     "ground_truth": "",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
   {
     "question": "Какие основные вопросы включены в перечень подготовки к экзамену?",
     "ground_truth": "",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
   {
     "question": "Какие основные темы для изучения по курсу?",
     "ground_truth": "",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
   {
@@ -690,52 +690,52 @@
   },
   {
     "question": "Есть ли тема про квантовые вычисления?",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
   {
     "question": "Какие дисциплины изучают блокчейн-технологии?",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
   {
     "question": "В каком курсе рассматриваются методы биоинформатики?",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
   {
     "question": "Есть ли темы по разработке мобильных приложений?",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
   {
     "question": "Какая дисциплина посвящена веб-разработке?",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
   {
     "question": "Изучаются ли в курсах микроконтроллеры и встраиваемые системы?",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
   {
     "question": "В каком предмете рассматривается разработка игр?",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
   {
     "question": "Есть ли курс по компьютерной безопасности?",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
   {
     "question": "Какие дисциплины связаны с робототехникой?",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
   {
     "question": "Изучаются ли технологии виртуальной реальности?",
-    "router_type": "not_found",
+    "router_type": "clarify",
     "ground_discipline": []
   },
 

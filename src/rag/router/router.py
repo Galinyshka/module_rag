@@ -193,7 +193,7 @@ class Router:
                     disciplines=candidates,
                     message=message,
                 )
-        # status == "not_found" или что-то неожиданное
+            
         return None
 
 
@@ -275,8 +275,14 @@ class Router:
                         disciplines=[],
                         global_entity=global_entity,
                     )
+                elif query_type in (QueryType.NOT_FOUND, QueryType.CLARIFY):
+                    result = RouteResult(
+                        query_type=QueryType.CLARIFY,
+                        disciplines=[],
+                        message="Уточните, про какую дисциплину вы спрашиваете.",
+                    )
                 else:
-                    result = RouteResult(query_type=query_type, disciplines=[])                
+                    result = RouteResult(query_type=QueryType.IRRELEVANT, disciplines=[])                
 
         except Exception as exc:
             log.warning("=== Router === Router fallback: %s", exc)

@@ -52,7 +52,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
-DATASET_PATH = "datasets_router/dataset.json"
+DATASET_PATH = "datasets/datasets_router/dataset.json"
 MAX_JUDGE_CONTEXT_CHARS = 4_000
 
 
